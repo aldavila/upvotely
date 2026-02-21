@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { PublicBoardView } from '@/components/boards/public-board-view';
 import type { Metadata } from 'next';
+import type { Prisma } from '@prisma/client';
 
 interface PageProps {
   params: Promise<{
@@ -67,7 +68,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function PublicBoardPage({ params, searchParams }: PageProps) {
+export default async function PublicBoardPage({ params, searchParams }: PageProps): Promise<React.ReactElement> {
   const { orgSlug, boardSlug } = await params;
   const { status, sort, q } = await searchParams;
   
@@ -77,8 +78,8 @@ export default async function PublicBoardPage({ params, searchParams }: PageProp
   const { board, statuses } = data;
   const session = await auth();
 
-  // Build query
-  const where: any = {
+  // Build query with proper typing
+  const where: Prisma.PostWhereInput = {
     boardId: board.id,
     isApproved: true,
     mergedIntoId: null,
@@ -95,8 +96,8 @@ export default async function PublicBoardPage({ params, searchParams }: PageProp
     ];
   }
 
-  // Build orderBy
-  let orderBy: any;
+  // Build orderBy with proper typing
+  let orderBy: Prisma.PostOrderByWithRelationInput | Prisma.PostOrderByWithRelationInput[];
   switch (sort) {
     case 'newest':
       orderBy = { createdAt: 'desc' };

@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { db } from '@/lib/db';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CHANGELOG_TYPES, formatDate } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
@@ -51,7 +52,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function PublicChangelogPage({ params }: PageProps) {
+export default async function PublicChangelogPage({ params }: PageProps): Promise<React.ReactElement> {
   const { orgSlug } = await params;
   const data = await getChangelog(orgSlug);
 
@@ -128,11 +129,15 @@ export default async function PublicChangelogPage({ params }: PageProps) {
 
                       {/* Image */}
                       {entry.imageUrl && (
-                        <img
-                          src={entry.imageUrl}
-                          alt={entry.title}
-                          className="mt-4 rounded-lg border"
-                        />
+                        <div className="relative mt-4 aspect-video w-full overflow-hidden rounded-lg border">
+                          <Image
+                            src={entry.imageUrl}
+                            alt={entry.title}
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 768px) 100vw, 768px"
+                          />
+                        </div>
                       )}
 
                       {/* Content */}

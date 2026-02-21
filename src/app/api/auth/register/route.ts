@@ -2,15 +2,19 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { db } from '@/lib/db';
 import { signUpSchema } from '@/lib/validators';
+import { z } from 'zod';
 
-export async function POST(req: Request) {
+export async function POST(req: Request): Promise<NextResponse> {
   try {
     const body = await req.json();
     const validatedData = signUpSchema.parse(body);
 
+    // Normalize email to lowercase
+    const normalizedEmail = validatedData.email.toLowerCase().trim();
+
     // Check if user already exists
     const existingUser = await db.user.findUnique({
-      where: { email: validatedData.email },
+      where: { email: normalizedEmail },
     });
 
     if (existingUser) {
@@ -26,8 +30,8 @@ export async function POST(req: Request) {
     // Create user
     const user = await db.user.create({
       data: {
-        name: validatedData.name,
-        email: validatedData.email,
+        name: validatedData.name.trim(),
+        email: normalizedEmail,
         password: hashedPassword,
       },
     });
@@ -41,17 +45,20 @@ export async function POST(req: Request) {
       },
     });
   } catch (error) {
-    console.error('Registration error:', error);
+    // Log error without exposing to client
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Registration error:', error);
+    }
     
-    if (error instanceof Error && error.name === 'ZodError') {
+    if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid input data' },
+        { error: 'Invalid input data', details: error.issues.map(e => e.message) },
         { status: 400 }
       );
     }
 
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Registration failed. Please try again.' },
       { status: 500 }
     );
   }

@@ -29,6 +29,7 @@ model User {
   comments      Comment[]
   apiKeys       ApiKey[]
 
+  @@index([email])
   @@map("users")
 }
 
@@ -253,6 +254,8 @@ model Post {
   @@index([boardId, statusId])
   @@index([boardId, voteCount(sort: Desc)])
   @@index([boardId, createdAt(sort: Desc)])
+  @@index([boardId, isApproved])
+  @@index([statusId])
   @@map("posts")
 }
 

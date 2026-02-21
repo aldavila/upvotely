@@ -1,17 +1,32 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { z } from 'zod';
 
-export async function POST(req: Request) {
+// Validation schema for widget submissions
+const widgetSubmitSchema = z.object({
+  title: z.string().min(3, 'Title must be at least 3 characters').max(200, 'Title too long').trim(),
+  content: z.string().min(10, 'Content must be at least 10 characters').max(10000, 'Content too long').trim(),
+  boardId: z.string().cuid().optional(),
+  organizationSlug: z.string().min(1).max(50).optional(),
+  boardSlug: z.string().min(1).max(50).optional(),
+}).refine(
+  (data) => data.boardId || (data.organizationSlug && data.boardSlug),
+  { message: 'Either boardId or both organizationSlug and boardSlug are required' }
+);
+
+export async function POST(req: Request): Promise<NextResponse> {
   try {
     const body = await req.json();
-    const { title, content, boardId, organizationSlug, boardSlug } = body;
-
-    if (!title || !content) {
+    
+    const parseResult = widgetSubmitSchema.safeParse(body);
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: 'Title and content are required' },
+        { error: parseResult.error.issues[0]?.message ?? 'Invalid input' },
         { status: 400 }
       );
     }
+
+    const { title, content, boardId, organizationSlug, boardSlug } = parseResult.data;
 
     // Find the board
     let board;
@@ -57,7 +72,7 @@ export async function POST(req: Request) {
 
     if (!defaultStatus) {
       return NextResponse.json(
-        { error: 'No default status configured' },
+        { error: 'Board configuration error' },
         { status: 500 }
       );
     }
@@ -80,16 +95,18 @@ export async function POST(req: Request) {
       approved: post.isApproved,
     });
   } catch (error) {
-    console.error('Widget submit error:', error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Widget submit error:', error);
+    }
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to submit feedback' },
       { status: 500 }
     );
   }
 }
 
 // Handle preflight requests
-export async function OPTIONS() {
+export async function OPTIONS(): Promise<NextResponse> {
   return new NextResponse(null, {
     status: 204,
     headers: {

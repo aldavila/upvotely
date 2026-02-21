@@ -1,73 +1,96 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { z } from 'zod';
+
+const postIdSchema = z.string().cuid();
 
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ postId: string }> }
-) {
+): Promise<NextResponse> {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const userId = session.user.id;
     const { postId } = await params;
+    
+    // Validate postId format
+    const parseResult = postIdSchema.safeParse(postId);
+    if (!parseResult.success) {
+      return NextResponse.json({ error: 'Invalid post ID' }, { status: 400 });
+    }
 
-    // Get post and board
-    const post = await db.post.findUnique({
-      where: { id: postId },
-      include: { board: true },
+    // Use transaction to prevent race conditions
+    const result = await db.$transaction(async (tx) => {
+      // Get post and verify it exists
+      const post = await tx.post.findUnique({
+        where: { id: postId },
+        include: { board: true },
+      });
+
+      if (!post) {
+        throw new Error('Post not found');
+      }
+
+      // Check if user already voted
+      const existingVote = await tx.vote.findUnique({
+        where: {
+          postId_userId: {
+            postId,
+            userId,
+          },
+        },
+      });
+
+      if (existingVote) {
+        // Remove vote (toggle off)
+        await tx.vote.delete({
+          where: { id: existingVote.id },
+        });
+
+        // Decrement vote count atomically
+        const updatedPost = await tx.post.update({
+          where: { id: postId },
+          data: { voteCount: { decrement: 1 } },
+          select: { voteCount: true },
+        });
+
+        return { voted: false, voteCount: updatedPost.voteCount };
+      }
+
+      // Add vote
+      await tx.vote.create({
+        data: {
+          postId,
+          userId,
+        },
+      });
+
+      // Increment vote count atomically
+      const updatedPost = await tx.post.update({
+        where: { id: postId },
+        data: { voteCount: { increment: 1 } },
+        select: { voteCount: true },
+      });
+
+      return { voted: true, voteCount: updatedPost.voteCount };
     });
 
-    if (!post) {
+    return NextResponse.json(result);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Post not found') {
       return NextResponse.json({ error: 'Post not found' }, { status: 404 });
     }
-
-    // Check if user already voted
-    const existingVote = await db.vote.findUnique({
-      where: {
-        postId_userId: {
-          postId,
-          userId: session.user.id,
-        },
-      },
-    });
-
-    if (existingVote) {
-      // Remove vote (toggle off)
-      await db.vote.delete({
-        where: { id: existingVote.id },
-      });
-
-      // Decrement vote count
-      await db.post.update({
-        where: { id: postId },
-        data: { voteCount: { decrement: 1 } },
-      });
-
-      return NextResponse.json({ voted: false, voteCount: post.voteCount - 1 });
+    
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error voting:', error);
     }
-
-    // Add vote
-    await db.vote.create({
-      data: {
-        postId,
-        userId: session.user.id,
-      },
-    });
-
-    // Increment vote count
-    await db.post.update({
-      where: { id: postId },
-      data: { voteCount: { increment: 1 } },
-    });
-
-    return NextResponse.json({ voted: true, voteCount: post.voteCount + 1 });
-  } catch (error) {
-    console.error('Error voting:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to process vote' },
       { status: 500 }
     );
   }
@@ -76,10 +99,16 @@ export async function POST(
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ postId: string }> }
-) {
+): Promise<NextResponse> {
   try {
     const session = await auth();
     const { postId } = await params;
+
+    // Validate postId format
+    const parseResult = postIdSchema.safeParse(postId);
+    if (!parseResult.success) {
+      return NextResponse.json({ error: 'Invalid post ID' }, { status: 400 });
+    }
 
     const post = await db.post.findUnique({
       where: { id: postId },
@@ -108,9 +137,11 @@ export async function GET(
       hasVoted,
     });
   } catch (error) {
-    console.error('Error fetching vote status:', error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error fetching vote status:', error);
+    }
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to fetch vote status' },
       { status: 500 }
     );
   }

@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { createBoardSchema } from '@/lib/validators';
+import { z } from 'zod';
 
-export async function GET() {
+export async function GET(): Promise<NextResponse> {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -15,7 +16,7 @@ export async function GET() {
     });
 
     if (!membership) {
-      return NextResponse.json({ error: 'No organization' }, { status: 404 });
+      return NextResponse.json({ error: 'No organization found' }, { status: 404 });
     }
 
     const boards = await db.board.findMany({
@@ -32,15 +33,17 @@ export async function GET() {
 
     return NextResponse.json(boards);
   } catch (error) {
-    console.error('Error fetching boards:', error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error fetching boards:', error);
+    }
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to fetch boards' },
       { status: 500 }
     );
   }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: Request): Promise<NextResponse> {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -59,14 +62,27 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const validatedData = createBoardSchema.parse(body);
+    const parseResult = createBoardSchema.safeParse(body);
+    
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: 'Invalid input data', details: parseResult.error.issues.map(e => e.message) },
+        { status: 400 }
+      );
+    }
+    
+    const validatedData = parseResult.data;
+
+    // Sanitize inputs
+    const sanitizedSlug = validatedData.slug.toLowerCase().trim();
+    const sanitizedName = validatedData.name.trim();
 
     // Check if slug is unique within org
     const existingBoard = await db.board.findUnique({
       where: {
         organizationId_slug: {
           organizationId: membership.organizationId,
-          slug: validatedData.slug,
+          slug: sanitizedSlug,
         },
       },
     });
@@ -78,65 +94,77 @@ export async function POST(req: Request) {
       );
     }
 
-    // Get default status
-    let defaultStatus = await db.status.findFirst({
-      where: {
-        organizationId: membership.organizationId,
-        isDefault: true,
-      },
-    });
-
-    // Create default statuses if none exist
-    if (!defaultStatus) {
-      const statuses = [
-        { name: 'Open', slug: 'open', type: 'open', color: '#6b7280', isDefault: true, position: 0 },
-        { name: 'Under Review', slug: 'under_review', type: 'under_review', color: '#f59e0b', position: 1 },
-        { name: 'Planned', slug: 'planned', type: 'planned', color: '#3b82f6', showOnRoadmap: true, position: 2 },
-        { name: 'In Progress', slug: 'in_progress', type: 'in_progress', color: '#8b5cf6', showOnRoadmap: true, position: 3 },
-        { name: 'Complete', slug: 'complete', type: 'complete', color: '#10b981', showOnRoadmap: true, position: 4 },
-        { name: 'Closed', slug: 'closed', type: 'closed', color: '#ef4444', position: 5 },
-      ];
-
-      await db.status.createMany({
-        data: statuses.map((s) => ({
-          ...s,
-          organizationId: membership.organizationId,
-        })),
-      });
-
-      defaultStatus = await db.status.findFirst({
+    // Use transaction for atomicity
+    const board = await db.$transaction(async (tx) => {
+      // Get default status
+      let defaultStatus = await tx.status.findFirst({
         where: {
           organizationId: membership.organizationId,
           isDefault: true,
         },
       });
-    }
 
-    // Get max position
-    const maxPosition = await db.board.aggregate({
-      where: { organizationId: membership.organizationId },
-      _max: { position: true },
-    });
+      // Create default statuses if none exist
+      if (!defaultStatus) {
+        const statuses = [
+          { name: 'Open', slug: 'open', type: 'open', color: '#6b7280', isDefault: true, position: 0 },
+          { name: 'Under Review', slug: 'under_review', type: 'under_review', color: '#f59e0b', position: 1 },
+          { name: 'Planned', slug: 'planned', type: 'planned', color: '#3b82f6', showOnRoadmap: true, position: 2 },
+          { name: 'In Progress', slug: 'in_progress', type: 'in_progress', color: '#8b5cf6', showOnRoadmap: true, position: 3 },
+          { name: 'Complete', slug: 'complete', type: 'complete', color: '#10b981', showOnRoadmap: true, position: 4 },
+          { name: 'Closed', slug: 'closed', type: 'closed', color: '#ef4444', position: 5 },
+        ];
 
-    const board = await db.board.create({
-      data: {
-        ...validatedData,
-        organizationId: membership.organizationId,
-        position: (maxPosition._max.position ?? -1) + 1,
-      },
-    });
+        await tx.status.createMany({
+          data: statuses.map((s) => ({
+            ...s,
+            organizationId: membership.organizationId,
+          })),
+        });
 
-    // Update org board count
-    await db.organization.update({
-      where: { id: membership.organizationId },
-      data: { boardsCount: { increment: 1 } },
+        defaultStatus = await tx.status.findFirst({
+          where: {
+            organizationId: membership.organizationId,
+            isDefault: true,
+          },
+        });
+      }
+
+      // Get max position
+      const maxPosition = await tx.board.aggregate({
+        where: { organizationId: membership.organizationId },
+        _max: { position: true },
+      });
+
+      const newBoard = await tx.board.create({
+        data: {
+          name: sanitizedName,
+          slug: sanitizedSlug,
+          description: validatedData.description?.trim(),
+          isPublic: validatedData.isPublic ?? true,
+          allowAnonymous: validatedData.allowAnonymous ?? false,
+          requireApproval: validatedData.requireApproval ?? false,
+          organizationId: membership.organizationId,
+          position: (maxPosition._max.position ?? -1) + 1,
+        },
+      });
+
+      // Update org board count
+      await tx.organization.update({
+        where: { id: membership.organizationId },
+        data: { boardsCount: { increment: 1 } },
+      });
+
+      return newBoard;
     });
 
     return NextResponse.json(board, { status: 201 });
   } catch (error) {
-    console.error('Error creating board:', error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error creating board:', error);
+    }
     
-    if (error instanceof Error && error.name === 'ZodError') {
+    if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Invalid input data' },
         { status: 400 }
@@ -144,7 +172,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to create board' },
       { status: 500 }
     );
   }

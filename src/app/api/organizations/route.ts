@@ -2,8 +2,9 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { createOrganizationSchema } from '@/lib/validators';
+import { z } from 'zod';
 
-export async function GET() {
+export async function GET(): Promise<NextResponse> {
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -28,27 +29,43 @@ export async function GET() {
       }))
     );
   } catch (error) {
-    console.error('Error fetching organizations:', error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error fetching organizations:', error);
+    }
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to fetch organizations' },
       { status: 500 }
     );
   }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: Request): Promise<NextResponse> {
   try {
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    const userId = session.user.id;
     const body = await req.json();
-    const validatedData = createOrganizationSchema.parse(body);
+    
+    const parseResult = createOrganizationSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: 'Invalid input data', details: parseResult.error.issues.map(e => e.message) },
+        { status: 400 }
+      );
+    }
+    
+    const validatedData = parseResult.data;
+
+    // Sanitize inputs
+    const sanitizedSlug = validatedData.slug.toLowerCase().trim();
+    const sanitizedName = validatedData.name.trim();
 
     // Check if slug is available
     const existingOrg = await db.organization.findUnique({
-      where: { slug: validatedData.slug },
+      where: { slug: sanitizedSlug },
     });
 
     if (existingOrg) {
@@ -62,16 +79,16 @@ export async function POST(req: Request) {
     const organization = await db.$transaction(async (tx) => {
       const org = await tx.organization.create({
         data: {
-          name: validatedData.name,
-          slug: validatedData.slug,
-          description: validatedData.description,
+          name: sanitizedName,
+          slug: sanitizedSlug,
+          description: validatedData.description?.trim(),
         },
       });
 
       // Add creator as owner
       await tx.organizationMember.create({
         data: {
-          userId: session.user!.id!,
+          userId,
           organizationId: org.id,
           role: 'owner',
         },
@@ -94,9 +111,11 @@ export async function POST(req: Request) {
 
     return NextResponse.json(organization, { status: 201 });
   } catch (error) {
-    console.error('Error creating organization:', error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error creating organization:', error);
+    }
 
-    if (error instanceof Error && error.name === 'ZodError') {
+    if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Invalid input data' },
         { status: 400 }
@@ -104,7 +123,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to create organization' },
       { status: 500 }
     );
   }

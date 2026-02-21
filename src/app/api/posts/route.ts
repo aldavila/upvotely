@@ -2,25 +2,41 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { createPostSchema } from '@/lib/validators';
+import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
 
-export async function GET(req: Request) {
+// Query params validation schema
+const getPostsQuerySchema = z.object({
+  boardId: z.string().cuid(),
+  status: z.string().optional(),
+  sort: z.enum(['votes', 'newest', 'trending']).default('votes'),
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+export async function GET(req: Request): Promise<NextResponse> {
   try {
     const { searchParams } = new URL(req.url);
-    const boardId = searchParams.get('boardId');
-    const status = searchParams.get('status');
-    const sort = searchParams.get('sort') || 'votes';
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
+    
+    const queryResult = getPostsQuerySchema.safeParse({
+      boardId: searchParams.get('boardId'),
+      status: searchParams.get('status') || undefined,
+      sort: searchParams.get('sort') || 'votes',
+      page: searchParams.get('page') || '1',
+      limit: searchParams.get('limit') || '20',
+    });
 
-    if (!boardId) {
+    if (!queryResult.success) {
       return NextResponse.json(
-        { error: 'Board ID is required' },
+        { error: 'Invalid query parameters', details: queryResult.error.issues },
         { status: 400 }
       );
     }
 
-    // Build where clause
-    const where: any = {
+    const { boardId, status, sort, page, limit } = queryResult.data;
+
+    // Build where clause with proper typing
+    const where: Prisma.PostWhereInput = {
       boardId,
       isApproved: true,
       mergedIntoId: null, // Don't show merged posts
@@ -30,15 +46,14 @@ export async function GET(req: Request) {
       where.status = { slug: status };
     }
 
-    // Build orderBy
-    let orderBy: any;
+    // Build orderBy with proper typing
+    let orderBy: Prisma.PostOrderByWithRelationInput | Prisma.PostOrderByWithRelationInput[];
     switch (sort) {
       case 'newest':
         orderBy = { createdAt: 'desc' };
         break;
       case 'trending':
-        // For trending, we'd ideally use a computed score
-        // For now, use recent + votes
+        // For trending, use recent + votes
         orderBy = [{ voteCount: 'desc' }, { createdAt: 'desc' }];
         break;
       case 'votes':
@@ -76,19 +91,30 @@ export async function GET(req: Request) {
       },
     });
   } catch (error) {
-    console.error('Error fetching posts:', error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error fetching posts:', error);
+    }
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to fetch posts' },
       { status: 500 }
     );
   }
 }
 
-export async function POST(req: Request) {
+export async function POST(req: Request): Promise<NextResponse> {
   try {
     const session = await auth();
     const body = await req.json();
-    const validatedData = createPostSchema.parse(body);
+    
+    const parseResult = createPostSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: 'Invalid input data', details: parseResult.error.issues.map(e => e.message) },
+        { status: 400 }
+      );
+    }
+    
+    const validatedData = parseResult.data;
 
     // Get the board and verify access
     const board = await db.board.findUnique({
@@ -115,58 +141,68 @@ export async function POST(req: Request) {
 
     if (!defaultStatus) {
       return NextResponse.json(
-        { error: 'No default status configured' },
+        { error: 'Board configuration error' },
         { status: 500 }
       );
     }
 
-    // Create post
-    const post = await db.post.create({
-      data: {
-        title: validatedData.title,
-        content: validatedData.content,
-        boardId: validatedData.boardId,
-        authorId: validatedData.isAnonymous ? null : session?.user?.id,
-        statusId: defaultStatus.id,
-        isAnonymous: validatedData.isAnonymous,
-        isApproved: !board.requireApproval,
-        tags: validatedData.tagIds
-          ? { connect: validatedData.tagIds.map((id) => ({ id })) }
-          : undefined,
-      },
-      include: {
-        author: {
-          select: { id: true, name: true, image: true },
+    // Sanitize input
+    const sanitizedTitle = validatedData.title.trim();
+    const sanitizedContent = validatedData.content.trim();
+
+    // Create post with auto-upvote in a transaction to prevent race conditions
+    const result = await db.$transaction(async (tx) => {
+      const post = await tx.post.create({
+        data: {
+          title: sanitizedTitle,
+          content: sanitizedContent,
+          boardId: validatedData.boardId,
+          authorId: validatedData.isAnonymous ? null : session?.user?.id,
+          statusId: defaultStatus.id,
+          isAnonymous: validatedData.isAnonymous ?? false,
+          isApproved: !board.requireApproval,
+          tags: validatedData.tagIds
+            ? { connect: validatedData.tagIds.map((id) => ({ id })) }
+            : undefined,
         },
-        status: true,
-        tags: true,
-        _count: {
-          select: { votes: true, comments: true },
+        include: {
+          author: {
+            select: { id: true, name: true, image: true },
+          },
+          status: true,
+          tags: true,
+          _count: {
+            select: { votes: true, comments: true },
+          },
         },
-      },
+      });
+
+      // Auto-upvote by author if not anonymous
+      if (session?.user?.id && !validatedData.isAnonymous) {
+        await tx.vote.create({
+          data: {
+            postId: post.id,
+            userId: session.user.id,
+          },
+        });
+
+        // Update vote count atomically
+        await tx.post.update({
+          where: { id: post.id },
+          data: { voteCount: 1 },
+        });
+      }
+
+      return post;
     });
 
-    // Auto-upvote by author if not anonymous
-    if (session?.user?.id && !validatedData.isAnonymous) {
-      await db.vote.create({
-        data: {
-          postId: post.id,
-          userId: session.user.id,
-        },
-      });
-
-      // Update vote count
-      await db.post.update({
-        where: { id: post.id },
-        data: { voteCount: 1 },
-      });
-    }
-
-    return NextResponse.json(post, { status: 201 });
+    return NextResponse.json(result, { status: 201 });
   } catch (error) {
-    console.error('Error creating post:', error);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Error creating post:', error);
+    }
     
-    if (error instanceof Error && error.name === 'ZodError') {
+    if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Invalid input data' },
         { status: 400 }
@@ -174,7 +210,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Failed to create post' },
       { status: 500 }
     );
   }

@@ -45,10 +45,13 @@ export function slugify(text: string): string {
 }
 
 export function generateApiKey(): string {
+  // Use crypto for secure random generation
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let result = 'upv_';
   for (let i = 0; i < 32; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+    result += chars.charAt(array[i] % chars.length);
   }
   return result;
 }

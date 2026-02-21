@@ -57,7 +57,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function PublicRoadmapPage({ params }: PageProps) {
+export default async function PublicRoadmapPage({ params }: PageProps): Promise<React.ReactElement> {
   const { orgSlug } = await params;
   const data = await getRoadmap(orgSlug);
 
