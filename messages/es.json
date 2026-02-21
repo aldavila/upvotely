@@ -1,0 +1,223 @@
+{
+  "common": {
+    "loading": "Cargando...",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "create": "Crear",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "sort": "Ordenar",
+    "submit": "Enviar",
+    "close": "Cerrar",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "previous": "Anterior",
+    "yes": "Sí",
+    "no": "No",
+    "or": "o",
+    "and": "y",
+    "all": "Todos",
+    "none": "Ninguno",
+    "more": "Más",
+    "less": "Menos",
+    "viewAll": "Ver Todo",
+    "learnMore": "Saber Más"
+  },
+  "auth": {
+    "signIn": "Iniciar Sesión",
+    "signOut": "Cerrar Sesión",
+    "signUp": "Registrarse",
+    "email": "Correo Electrónico",
+    "password": "Contraseña",
+    "confirmPassword": "Confirmar Contraseña",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "resetPassword": "Restablecer Contraseña",
+    "continueWith": "Continuar con {provider}",
+    "orContinueWith": "O continuar con",
+    "noAccount": "¿No tienes cuenta?",
+    "haveAccount": "¿Ya tienes cuenta?",
+    "createAccount": "Crear Cuenta",
+    "welcomeBack": "Bienvenido de nuevo",
+    "signInDescription": "Inicia sesión en tu cuenta para continuar"
+  },
+  "landing": {
+    "hero": {
+      "title": "Gestión de feedback que crece contigo, no en tu contra",
+      "subtitle": "Recolecta, organiza y prioriza el feedback de tu producto con precios fijos. Sin cargos por usuario. Sin facturas sorpresa. Solo mejores productos.",
+      "cta": "Empieza Gratis Hoy",
+      "ctaSecondary": "Ver Cómo Funciona"
+    },
+    "features": {
+      "title": "Todo lo que necesitas para construir mejores productos",
+      "subtitle": "Todas las funciones que esperarías, sin la complejidad que no.",
+      "feedbackBoards": {
+        "title": "Tableros de Feedback",
+        "description": "Recolecta y organiza solicitudes de funciones con votación, etiquetas y búsqueda potentes."
+      },
+      "roadmap": {
+        "title": "Roadmap Público",
+        "description": "Mantén informados a tus usuarios con un roadmap hermoso e interactivo que realmente usarán."
+      },
+      "changelog": {
+        "title": "Changelog",
+        "description": "Anuncia actualizaciones y cierra el ciclo de feedback. Muestra que la voz del usuario importa."
+      },
+      "analytics": {
+        "title": "Analíticas",
+        "description": "Entiende lo que tus usuarios realmente quieren con insights y tendencias potentes."
+      },
+      "integrations": {
+        "title": "Integraciones",
+        "description": "Conecta con Slack, Jira, Linear, GitHub y más. Todo incluido, sin ventas adicionales."
+      },
+      "customization": {
+        "title": "Personalización",
+        "description": "Adapta tu marca con colores, logos personalizados e incluso tu propio dominio."
+      }
+    },
+    "pricing": {
+      "title": "Precios simples y transparentes",
+      "subtitle": "Sin precios por usuario. Sin trampas de usuarios rastreados. Solo tarifas mensuales fijas que crecen contigo.",
+      "free": {
+        "name": "Gratis",
+        "price": "$0",
+        "period": "/siempre",
+        "description": "Perfecto para empezar",
+        "features": [
+          "1 tablero de feedback",
+          "Usuarios ilimitados",
+          "Roadmap público",
+          "Analíticas básicas",
+          "Soporte comunitario"
+        ]
+      },
+      "starter": {
+        "name": "Starter",
+        "price": "$29",
+        "period": "/mes",
+        "description": "Para equipos en crecimiento",
+        "features": [
+          "3 tableros de feedback",
+          "Usuarios ilimitados",
+          "Marca personalizada",
+          "Quitar 'Powered by'",
+          "Todas las integraciones",
+          "Soporte prioritario"
+        ]
+      },
+      "pro": {
+        "name": "Pro",
+        "price": "$79",
+        "period": "/mes",
+        "description": "Para empresas escalando",
+        "features": [
+          "Tableros ilimitados",
+          "Usuarios ilimitados",
+          "Dominio personalizado",
+          "Acceso API",
+          "Analíticas avanzadas",
+          "SSO listo",
+          "Soporte dedicado"
+        ]
+      }
+    },
+    "comparison": {
+      "title": "Por qué los equipos cambian de Canny",
+      "subtitle": "Mira cómo Upvotely se compara con la competencia"
+    },
+    "cta": {
+      "title": "¿Listo para construir mejores productos?",
+      "subtitle": "Únete a miles de equipos usando Upvotely para recolectar y priorizar feedback.",
+      "button": "Empieza Gratis"
+    }
+  },
+  "dashboard": {
+    "title": "Panel de Control",
+    "overview": "Resumen",
+    "boards": "Tableros",
+    "roadmap": "Roadmap",
+    "changelog": "Changelog",
+    "analytics": "Analíticas",
+    "team": "Equipo",
+    "settings": "Configuración",
+    "stats": {
+      "totalPosts": "Total de Posts",
+      "totalVotes": "Total de Votos",
+      "activeUsers": "Usuarios Activos",
+      "openPosts": "Posts Abiertos"
+    }
+  },
+  "boards": {
+    "title": "Tableros de Feedback",
+    "create": "Crear Tablero",
+    "empty": "Aún no hay tableros",
+    "emptyDescription": "Crea tu primer tablero de feedback para empezar a recolectar feedback.",
+    "settings": "Configuración del Tablero",
+    "name": "Nombre del Tablero",
+    "description": "Descripción",
+    "slug": "Slug URL",
+    "isPublic": "Tablero Público",
+    "allowAnonymous": "Permitir Votación Anónima",
+    "requireApproval": "Requerir Aprobación"
+  },
+  "posts": {
+    "title": "Feedback",
+    "create": "Nuevo Post",
+    "empty": "Aún no hay feedback",
+    "emptyDescription": "¡Sé el primero en compartir tu idea!",
+    "postTitle": "Título",
+    "postContent": "Descripción",
+    "votes": "{count, plural, =0 {0 votos} =1 {1 voto} other {# votos}}",
+    "comments": "{count, plural, =0 {0 comentarios} =1 {1 comentario} other {# comentarios}}",
+    "sortBy": {
+      "votes": "Más Votados",
+      "newest": "Más Recientes",
+      "trending": "Tendencias"
+    },
+    "status": {
+      "open": "Abierto",
+      "under_review": "En Revisión",
+      "planned": "Planeado",
+      "in_progress": "En Progreso",
+      "complete": "Completado",
+      "closed": "Cerrado"
+    }
+  },
+  "roadmap": {
+    "title": "Roadmap",
+    "empty": "Nada en el roadmap aún",
+    "emptyDescription": "Los posts aparecerán aquí cuando se marquen como Planeado o En Progreso."
+  },
+  "changelog": {
+    "title": "Changelog",
+    "create": "Nueva Entrada",
+    "empty": "Aún no hay actualizaciones",
+    "emptyDescription": "Las entradas del changelog aparecerán aquí cuando se publiquen.",
+    "types": {
+      "feature": "Nueva Función",
+      "improvement": "Mejora",
+      "fix": "Corrección",
+      "other": "Otro"
+    }
+  },
+  "settings": {
+    "title": "Configuración",
+    "organization": "Organización",
+    "billing": "Facturación",
+    "branding": "Marca",
+    "domain": "Dominio Personalizado",
+    "integrations": "Integraciones",
+    "api": "Claves API",
+    "danger": "Zona de Peligro",
+    "deleteOrg": "Eliminar Organización",
+    "cancelSubscription": "Cancelar Suscripción"
+  },
+  "errors": {
+    "generic": "Algo salió mal. Por favor intenta de nuevo.",
+    "notFound": "Página no encontrada",
+    "unauthorized": "No tienes permiso para acceder a esto.",
+    "validation": "Por favor revisa tu entrada e intenta de nuevo."
+  }
+}

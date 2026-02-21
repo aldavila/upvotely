@@ -1,0 +1,381 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// Authentication Models (NextAuth.js)
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?   // For email/password auth
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  memberships   OrganizationMember[]
+  posts         Post[]
+  votes         Vote[]
+  comments      Comment[]
+  apiKeys       ApiKey[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ============================================
+// Organization / Multi-tenant Models
+// ============================================
+
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  logo        String?
+  favicon     String?
+  
+  // Branding customization
+  primaryColor   String  @default("#7c3aed")
+  accentColor    String  @default("#a78bfa")
+  showBranding   Boolean @default(true) // "Powered by Upvotely"
+  
+  // Custom domain
+  customDomain      String?  @unique
+  domainVerified    Boolean  @default(false)
+  domainVerifiedAt  DateTime?
+  
+  // Feature flags (for plan-based access)
+  plan              String   @default("free") // free, starter, pro, agency
+  boardsLimit       Int      @default(1)
+  
+  // Usage tracking (for billing)
+  boardsCount       Int      @default(0)
+  
+  // Webhook configuration
+  webhookUrl        String?
+  webhookSecret     String?
+  webhookEvents     String[] @default([])
+  
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  members    OrganizationMember[]
+  boards     Board[]
+  statuses   Status[]
+  changelog  ChangelogEntry[]
+  apiKeys    ApiKey[]
+
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  id             String   @id @default(cuid())
+  userId         String
+  organizationId String
+  role           String   @default("member") // owner, admin, moderator, member
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@map("organization_members")
+}
+
+// ============================================
+// Board & Feedback Models
+// ============================================
+
+model Board {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  slug           String
+  description    String?
+  
+  // Board settings
+  isPublic         Boolean @default(true)
+  allowAnonymous   Boolean @default(false)
+  requireApproval  Boolean @default(false)
+  showVoteCount    Boolean @default(true)
+  
+  // Ordering
+  position         Int     @default(0)
+  
+  // Archive status
+  isArchived       Boolean @default(false)
+  archivedAt       DateTime?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  posts        Post[]
+  tags         Tag[]
+
+  @@unique([organizationId, slug])
+  @@map("boards")
+}
+
+model Status {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  slug           String
+  color          String   @default("#6b7280")
+  
+  // Status type for filtering
+  type           String   @default("default") // open, under_review, planned, in_progress, complete, closed
+  
+  // Display order
+  position       Int      @default(0)
+  
+  // Whether to show on roadmap
+  showOnRoadmap  Boolean  @default(false)
+  
+  isDefault      Boolean  @default(false)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  posts        Post[]
+
+  @@unique([organizationId, slug])
+  @@map("statuses")
+}
+
+model Tag {
+  id       String   @id @default(cuid())
+  boardId  String
+  name     String
+  color    String   @default("#6b7280")
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  board Board  @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  posts Post[] @relation("PostTags")
+
+  @@unique([boardId, name])
+  @@map("tags")
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  boardId   String
+  authorId  String?  // Can be null for anonymous posts
+  statusId  String
+  
+  title     String
+  content   String   @db.Text
+  
+  // Vote count (denormalized for performance)
+  voteCount Int      @default(0)
+  
+  // Moderation
+  isApproved Boolean  @default(true)
+  isPinned   Boolean  @default(false)
+  
+  // Merged posts
+  mergedIntoId String?
+  
+  // Anonymous posting
+  isAnonymous  Boolean  @default(false)
+  
+  // ETA for roadmap
+  eta          DateTime?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  board        Board          @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  author       User?          @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  status       Status         @relation(fields: [statusId], references: [id])
+  mergedInto   Post?          @relation("MergedPosts", fields: [mergedIntoId], references: [id])
+  mergedPosts  Post[]         @relation("MergedPosts")
+  votes        Vote[]
+  comments     Comment[]
+  tags         Tag[]          @relation("PostTags")
+  changelogEntries ChangelogEntry[] @relation("ChangelogPosts")
+
+  @@index([boardId, statusId])
+  @@index([boardId, voteCount(sort: Desc)])
+  @@index([boardId, createdAt(sort: Desc)])
+  @@map("posts")
+}
+
+model Vote {
+  id       String   @id @default(cuid())
+  postId   String
+  userId   String
+  
+  createdAt DateTime @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@map("votes")
+}
+
+model Comment {
+  id       String   @id @default(cuid())
+  postId   String
+  authorId String
+  parentId String?
+  
+  content  String   @db.Text
+  
+  // Internal comments visible only to team
+  isInternal Boolean @default(false)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  post     Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author   User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  Comment[] @relation("CommentReplies")
+
+  @@index([postId])
+  @@map("comments")
+}
+
+// ============================================
+// Changelog Models
+// ============================================
+
+model ChangelogEntry {
+  id             String   @id @default(cuid())
+  organizationId String
+  
+  title          String
+  content        String   @db.Text
+  
+  // Category/type
+  type           String   @default("improvement") // feature, improvement, fix, other
+  
+  // Publishing
+  isPublished    Boolean  @default(false)
+  publishedAt    DateTime?
+  
+  // Image/media
+  imageUrl       String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  linkedPosts  Post[]       @relation("ChangelogPosts")
+
+  @@index([organizationId, publishedAt(sort: Desc)])
+  @@map("changelog_entries")
+}
+
+// ============================================
+// API Key Model
+// ============================================
+
+model ApiKey {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String   // Created by
+  
+  name           String
+  keyHash        String   @unique // Hashed API key
+  keyPrefix      String   // First 8 chars for identification
+  
+  // Permissions
+  scopes         String[] @default(["read"])
+  
+  // Usage tracking
+  lastUsedAt     DateTime?
+  usageCount     Int      @default(0)
+  
+  // Expiration
+  expiresAt      DateTime?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([keyHash])
+  @@map("api_keys")
+}
+
+// ============================================
+// Webhook Event Log
+// ============================================
+
+model WebhookEvent {
+  id             String   @id @default(cuid())
+  organizationId String
+  
+  event          String   // post.created, vote.created, etc.
+  payload        Json
+  
+  // Delivery status
+  status         String   @default("pending") // pending, sent, failed
+  attempts       Int      @default(0)
+  lastAttemptAt  DateTime?
+  response       String?  @db.Text
+  
+  createdAt DateTime @default(now())
+
+  @@index([organizationId, status])
+  @@map("webhook_events")
+}

@@ -1,0 +1,223 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "filter": "Filter",
+    "sort": "Sort",
+    "submit": "Submit",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "yes": "Yes",
+    "no": "No",
+    "or": "or",
+    "and": "and",
+    "all": "All",
+    "none": "None",
+    "more": "More",
+    "less": "Less",
+    "viewAll": "View All",
+    "learnMore": "Learn More"
+  },
+  "auth": {
+    "signIn": "Sign In",
+    "signOut": "Sign Out",
+    "signUp": "Sign Up",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "forgotPassword": "Forgot Password?",
+    "resetPassword": "Reset Password",
+    "continueWith": "Continue with {provider}",
+    "orContinueWith": "Or continue with",
+    "noAccount": "Don't have an account?",
+    "haveAccount": "Already have an account?",
+    "createAccount": "Create Account",
+    "welcomeBack": "Welcome back",
+    "signInDescription": "Sign in to your account to continue"
+  },
+  "landing": {
+    "hero": {
+      "title": "Feedback management that grows with you, not against you",
+      "subtitle": "Collect, organize, and prioritize product feedback with flat pricing. No per-user fees. No surprise bills. Just better products.",
+      "cta": "Start Free Today",
+      "ctaSecondary": "See How It Works"
+    },
+    "features": {
+      "title": "Everything you need to build better products",
+      "subtitle": "All the features you'd expect, none of the complexity you wouldn't.",
+      "feedbackBoards": {
+        "title": "Feedback Boards",
+        "description": "Collect and organize feature requests with powerful voting, tagging, and search capabilities."
+      },
+      "roadmap": {
+        "title": "Public Roadmap",
+        "description": "Keep your users in the loop with a beautiful, interactive roadmap they'll actually use."
+      },
+      "changelog": {
+        "title": "Changelog",
+        "description": "Announce updates and close the feedback loop. Show users their voice matters."
+      },
+      "analytics": {
+        "title": "Analytics",
+        "description": "Understand what your users really want with powerful insights and trends."
+      },
+      "integrations": {
+        "title": "Integrations",
+        "description": "Connect with Slack, Jira, Linear, GitHub, and more. All included, no upsells."
+      },
+      "customization": {
+        "title": "Customization",
+        "description": "Match your brand with custom colors, logos, and even your own domain."
+      }
+    },
+    "pricing": {
+      "title": "Simple, transparent pricing",
+      "subtitle": "No per-user pricing. No tracked-user gotchas. Just flat monthly fees that grow with you.",
+      "free": {
+        "name": "Free",
+        "price": "$0",
+        "period": "/forever",
+        "description": "Perfect for getting started",
+        "features": [
+          "1 feedback board",
+          "Unlimited users",
+          "Public roadmap",
+          "Basic analytics",
+          "Community support"
+        ]
+      },
+      "starter": {
+        "name": "Starter",
+        "price": "$29",
+        "period": "/month",
+        "description": "For growing teams",
+        "features": [
+          "3 feedback boards",
+          "Unlimited users",
+          "Custom branding",
+          "Remove 'Powered by'",
+          "All integrations",
+          "Priority support"
+        ]
+      },
+      "pro": {
+        "name": "Pro",
+        "price": "$79",
+        "period": "/month",
+        "description": "For scaling companies",
+        "features": [
+          "Unlimited boards",
+          "Unlimited users",
+          "Custom domain",
+          "API access",
+          "Advanced analytics",
+          "SSO ready",
+          "Dedicated support"
+        ]
+      }
+    },
+    "comparison": {
+      "title": "Why teams switch from Canny",
+      "subtitle": "See how Upvotely compares to the competition"
+    },
+    "cta": {
+      "title": "Ready to build better products?",
+      "subtitle": "Join thousands of teams using Upvotely to collect and prioritize feedback.",
+      "button": "Get Started Free"
+    }
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "overview": "Overview",
+    "boards": "Boards",
+    "roadmap": "Roadmap",
+    "changelog": "Changelog",
+    "analytics": "Analytics",
+    "team": "Team",
+    "settings": "Settings",
+    "stats": {
+      "totalPosts": "Total Posts",
+      "totalVotes": "Total Votes",
+      "activeUsers": "Active Users",
+      "openPosts": "Open Posts"
+    }
+  },
+  "boards": {
+    "title": "Feedback Boards",
+    "create": "Create Board",
+    "empty": "No boards yet",
+    "emptyDescription": "Create your first feedback board to start collecting feedback.",
+    "settings": "Board Settings",
+    "name": "Board Name",
+    "description": "Description",
+    "slug": "URL Slug",
+    "isPublic": "Public Board",
+    "allowAnonymous": "Allow Anonymous Voting",
+    "requireApproval": "Require Approval"
+  },
+  "posts": {
+    "title": "Feedback",
+    "create": "New Post",
+    "empty": "No feedback yet",
+    "emptyDescription": "Be the first to share your idea!",
+    "postTitle": "Title",
+    "postContent": "Description",
+    "votes": "{count, plural, =0 {0 votes} =1 {1 vote} other {# votes}}",
+    "comments": "{count, plural, =0 {0 comments} =1 {1 comment} other {# comments}}",
+    "sortBy": {
+      "votes": "Most Votes",
+      "newest": "Newest",
+      "trending": "Trending"
+    },
+    "status": {
+      "open": "Open",
+      "under_review": "Under Review",
+      "planned": "Planned",
+      "in_progress": "In Progress",
+      "complete": "Complete",
+      "closed": "Closed"
+    }
+  },
+  "roadmap": {
+    "title": "Roadmap",
+    "empty": "Nothing on the roadmap yet",
+    "emptyDescription": "Posts will appear here when marked as Planned or In Progress."
+  },
+  "changelog": {
+    "title": "Changelog",
+    "create": "New Entry",
+    "empty": "No updates yet",
+    "emptyDescription": "Changelog entries will appear here when published.",
+    "types": {
+      "feature": "New Feature",
+      "improvement": "Improvement",
+      "fix": "Bug Fix",
+      "other": "Other"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "organization": "Organization",
+    "billing": "Billing",
+    "branding": "Branding",
+    "domain": "Custom Domain",
+    "integrations": "Integrations",
+    "api": "API Keys",
+    "danger": "Danger Zone",
+    "deleteOrg": "Delete Organization",
+    "cancelSubscription": "Cancel Subscription"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "notFound": "Page not found",
+    "unauthorized": "You don't have permission to access this.",
+    "validation": "Please check your input and try again."
+  }
+}
