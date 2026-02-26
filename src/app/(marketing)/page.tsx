@@ -355,9 +355,9 @@ export default async function LandingPage() {
             <div className="flex items-center gap-3">
               <Shield className="h-8 w-8 text-primary" />
               <div>
-                <div className="font-semibold">SOC2 Compliant</div>
+                <div className="font-semibold">Secure by Default</div>
                 <div className="text-sm text-muted-foreground">
-                  Enterprise-grade security
+                  Encrypted & hosted on AWS
                 </div>
               </div>
             </div>
