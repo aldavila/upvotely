@@ -272,6 +272,71 @@
     "showInternal": "Mostrar notas internas",
     "signInToComment": "Inicia sesi\u00f3n para dejar un comentario."
   },
+  "aiCategorization": {
+    "title": "Categor\u00eda IA",
+    "tags": "Etiquetas IA",
+    "categorizing": "Categorizando...",
+    "categories": {
+      "bug": "Error",
+      "feature": "Solicitud de Funci\u00f3n",
+      "ux": "Mejora de UX",
+      "performance": "Rendimiento",
+      "integration": "Integraci\u00f3n",
+      "docs": "Documentaci\u00f3n",
+      "other": "Otro"
+    },
+    "filterByCategory": "Filtrar por categor\u00eda IA"
+  },
+  "sentiment": {
+    "title": "Sentimiento",
+    "positive": "Positivo",
+    "neutral": "Neutral",
+    "negative": "Negativo",
+    "score": "Puntuaci\u00f3n de Sentimiento",
+    "distribution": "Distribuci\u00f3n de Sentimiento",
+    "analyzing": "Analizando...",
+    "weekly": "Sentimiento Semanal"
+  },
+  "duplicateDetection": {
+    "title": "Sugerencias de Fusi\u00f3n",
+    "similarPosts": "Posts Similares",
+    "similarity": "Similitud",
+    "accept": "Aceptar",
+    "dismiss": "Descartar",
+    "noSuggestions": "Sin sugerencias de fusi\u00f3n",
+    "mergeDescription": "Estos posts parecen similares y podr\u00edan fusionarse"
+  },
+  "similarSuggestions": {
+    "title": "Solicitudes existentes similares",
+    "didYouMean": "\u00bfQuisiste decir alguna de estas?",
+    "noneMatch": "Ninguna de estas coincide",
+    "viewAndVote": "Ver y Votar",
+    "searching": "Buscando..."
+  },
+  "search": {
+    "placeholder": "Buscar feedback...",
+    "noResults": "Sin resultados",
+    "typeToSearch": "Escribe para buscar...",
+    "resultsFound": "resultados encontrados"
+  },
+  "trends": {
+    "title": "Tendencias",
+    "description": "Qu\u00e9 est\u00e1 pasando con tu feedback",
+    "thisWeek": "\u00daltimos 7 d\u00edas",
+    "thisMonth": "\u00daltimos 30 d\u00edas",
+    "thisQuarter": "\u00daltimos 90 d\u00edas",
+    "newPosts": "Nuevos Posts",
+    "voteVelocity": "Total de Votos",
+    "topVoted": "M\u00e1s Votados",
+    "mostDiscussed": "M\u00e1s Discutidos",
+    "statusDistribution": "Distribuci\u00f3n por Estado",
+    "feedbackVolume": "Volumen de Feedback",
+    "postsPerDay": "por d\u00eda promedio",
+    "avgPostsPerDay": "Posts/D\u00eda Promedio",
+    "mostActiveBoard": "Tablero M\u00e1s Activo",
+    "noPosts": "Sin posts en este per\u00edodo",
+    "noDiscussions": "Sin discusiones en este per\u00edodo"
+  },
   "errors": {
     "generic": "Algo sali\u00f3 mal. Por favor intenta de nuevo.",
     "notFound": "P\u00e1gina no encontrada",

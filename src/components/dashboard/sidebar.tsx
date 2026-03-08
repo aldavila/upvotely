@@ -15,6 +15,7 @@ import {
   ChevronDown,
   MessageCircle,
   DollarSign,
+  TrendingUp,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -31,6 +32,7 @@ const navigation = [
   { name: 'Changelog', href: '/dashboard/changelog', icon: Megaphone },
   { name: 'Feedback', href: '/dashboard/feedback', icon: MessageCircle },
   { name: 'Prioritization', href: '/dashboard/prioritization', icon: DollarSign },
+  { name: 'Trends', href: '/dashboard/trends', icon: TrendingUp },
   { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
   { name: 'Team', href: '/dashboard/team', icon: Users },
 ];

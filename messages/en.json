@@ -272,6 +272,71 @@
     "showInternal": "Show internal notes",
     "signInToComment": "Sign in to leave a comment."
   },
+  "aiCategorization": {
+    "title": "AI Category",
+    "tags": "AI Tags",
+    "categorizing": "Categorizing...",
+    "categories": {
+      "bug": "Bug",
+      "feature": "Feature Request",
+      "ux": "UX Improvement",
+      "performance": "Performance",
+      "integration": "Integration",
+      "docs": "Documentation",
+      "other": "Other"
+    },
+    "filterByCategory": "Filter by AI category"
+  },
+  "sentiment": {
+    "title": "Sentiment",
+    "positive": "Positive",
+    "neutral": "Neutral",
+    "negative": "Negative",
+    "score": "Sentiment Score",
+    "distribution": "Sentiment Distribution",
+    "analyzing": "Analyzing...",
+    "weekly": "Weekly Sentiment"
+  },
+  "duplicateDetection": {
+    "title": "Merge Suggestions",
+    "similarPosts": "Similar Posts",
+    "similarity": "Similarity",
+    "accept": "Accept",
+    "dismiss": "Dismiss",
+    "noSuggestions": "No merge suggestions",
+    "mergeDescription": "These posts appear to be similar and could be merged"
+  },
+  "similarSuggestions": {
+    "title": "Similar existing requests",
+    "didYouMean": "Did you mean one of these?",
+    "noneMatch": "None of these match",
+    "viewAndVote": "View & Vote",
+    "searching": "Searching..."
+  },
+  "search": {
+    "placeholder": "Search feedback...",
+    "noResults": "No results found",
+    "typeToSearch": "Type to search...",
+    "resultsFound": "results found"
+  },
+  "trends": {
+    "title": "Trends",
+    "description": "What's happening with your feedback",
+    "thisWeek": "Last 7 days",
+    "thisMonth": "Last 30 days",
+    "thisQuarter": "Last 90 days",
+    "newPosts": "New Posts",
+    "voteVelocity": "Total Votes",
+    "topVoted": "Top Voted",
+    "mostDiscussed": "Most Discussed",
+    "statusDistribution": "Status Distribution",
+    "feedbackVolume": "Feedback Volume",
+    "postsPerDay": "per day avg",
+    "avgPostsPerDay": "Avg Posts/Day",
+    "mostActiveBoard": "Most Active Board",
+    "noPosts": "No posts this period",
+    "noDiscussions": "No discussions this period"
+  },
   "errors": {
     "generic": "Something went wrong. Please try again.",
     "notFound": "Page not found",
