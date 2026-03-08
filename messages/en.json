@@ -342,5 +342,16 @@
     "notFound": "Page not found",
     "unauthorized": "You don't have permission to access this.",
     "validation": "Please check your input and try again."
+  },
+  "voterNotifications": {
+    "statusUpdate": "Status Update",
+    "statusChanged": "Your feature request \"{title}\" is now {status}",
+    "subscribed": "Subscribed to updates",
+    "unsubscribed": "Unsubscribed from updates",
+    "subscribe": "Subscribe",
+    "unsubscribe": "Unsubscribe",
+    "unsubscribeSuccess": "You have been unsubscribed from updates for this post",
+    "notifyVoters": "Notify voters of this change",
+    "votersNotified": "{count} voters have been notified"
   }
 }
