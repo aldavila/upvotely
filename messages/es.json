@@ -183,7 +183,15 @@
       "in_progress": "En Progreso",
       "complete": "Completado",
       "closed": "Cerrado"
-    }
+    },
+    "internalNote": "Nota interna",
+    "internalNoteDescription": "Solo visible para miembros del equipo",
+    "writeComment": "Escribe un comentario...",
+    "writeInternalNote": "Escribe una nota interna...",
+    "addNote": "Agregar Nota",
+    "comment": "Comentar",
+    "reply": "Responder",
+    "noComments": "Aún no hay comentarios. ¡Sé el primero!"
   },
   "roadmap": {
     "title": "Roadmap",
