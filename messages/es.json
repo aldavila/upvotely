@@ -214,6 +214,19 @@
     "deleteOrg": "Eliminar Organización",
     "cancelSubscription": "Cancelar Suscripción"
   },
+  "customers": {
+    "title": "Clientes",
+    "empty": "Aún no hay clientes",
+    "emptyDescription": "Los clientes aparecerán aquí cuando se identifiquen a través de la API o SDK.",
+    "name": "Nombre",
+    "company": "Empresa",
+    "plan": "Plan",
+    "mrr": "MRR",
+    "requests": "{count, plural, =0 {0 solicitudes} =1 {1 solicitud} other {# solicitudes}}",
+    "lastActive": "Última Actividad",
+    "totalMrr": "MRR Total",
+    "identify": "API de Identificación"
+  },
   "errors": {
     "generic": "Algo salió mal. Por favor intenta de nuevo.",
     "notFound": "Página no encontrada",

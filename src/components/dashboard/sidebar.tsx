@@ -13,6 +13,7 @@ import {
   Settings,
   HelpCircle,
   ChevronDown,
+  Building2,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -25,6 +26,7 @@ import { Button } from '@/components/ui/button';
 const navigation = [
   { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Boards', href: '/dashboard/boards', icon: MessageSquare },
+  { name: 'Customers', href: '/dashboard/customers', icon: Building2 },
   { name: 'Roadmap', href: '/dashboard/roadmap', icon: Map },
   { name: 'Changelog', href: '/dashboard/changelog', icon: Megaphone },
   { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },

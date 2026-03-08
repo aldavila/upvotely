@@ -115,6 +115,7 @@ model Organization {
   statuses   Status[]
   changelog  ChangelogEntry[]
   apiKeys    ApiKey[]
+  customers  Customer[]
 
   @@map("organizations")
 }
@@ -250,6 +251,7 @@ model Post {
   comments     Comment[]
   tags         Tag[]          @relation("PostTags")
   changelogEntries ChangelogEntry[] @relation("ChangelogPosts")
+  customerRequests CustomerRequest[]
 
   @@index([boardId, statusId])
   @@index([boardId, voteCount(sort: Desc)])
@@ -325,6 +327,47 @@ model ChangelogEntry {
 
   @@index([organizationId, publishedAt(sort: Desc)])
   @@map("changelog_entries")
+}
+
+// ============================================
+// Customer Models
+// ============================================
+
+model Customer {
+  id             String   @id @default(cuid())
+  organizationId String
+  externalId     String?
+  name           String
+  email          String?
+  company        String?
+  plan           String?
+  mrr            Float?   @default(0)
+  customFields   Json?    @default("{}")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  requests       CustomerRequest[]
+
+  @@unique([organizationId, externalId])
+  @@index([organizationId, mrr(sort: Desc)])
+  @@map("customers")
+}
+
+model CustomerRequest {
+  id          String   @id @default(cuid())
+  customerId  String
+  postId      String
+  source      String   @default("portal")
+  note        String?  @db.Text
+  priority    String?
+  createdAt   DateTime @default(now())
+
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  post        Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([customerId, postId])
+  @@map("customer_requests")
 }
 
 // ============================================

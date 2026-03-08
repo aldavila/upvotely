@@ -145,6 +145,45 @@ export const createApiKeySchema = z.object({
   expiresAt: z.string().datetime().optional().nullable(),
 });
 
+// Customer validators
+export const createCustomerSchema = z.object({
+  externalId: z.string().max(255).optional(),
+  name: z.string().min(1).max(255),
+  email: z.string().email().optional(),
+  company: z.string().max(255).optional(),
+  plan: z.string().max(100).optional(),
+  mrr: z.number().min(0).optional(),
+  customFields: z.record(z.unknown()).optional(),
+});
+
+export const updateCustomerSchema = z.object({
+  name: z.string().min(1).max(255).optional(),
+  email: z.string().email().optional().nullable(),
+  company: z.string().max(255).optional().nullable(),
+  plan: z.string().max(100).optional().nullable(),
+  mrr: z.number().min(0).optional().nullable(),
+  customFields: z.record(z.unknown()).optional(),
+});
+
+export const identifyCustomerSchema = z.object({
+  userId: z.string().max(255).optional(),
+  externalId: z.string().max(255).optional(),
+  email: z.string().email().optional(),
+  name: z.string().min(1).max(255),
+  company: z.string().max(255).optional(),
+  plan: z.string().max(100).optional(),
+  mrr: z.number().min(0).optional(),
+  customFields: z.record(z.unknown()).optional(),
+});
+
+export const createCustomerRequestSchema = z.object({
+  customerId: z.string().cuid(),
+  postId: z.string().cuid(),
+  source: z.enum(['portal', 'api', 'widget', 'intercom', 'slack', 'agent']).default('portal'),
+  note: z.string().max(5000).optional(),
+  priority: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+});
+
 // Type exports
 export type SignUpInput = z.infer<typeof signUpSchema>;
 export type SignInInput = z.infer<typeof signInSchema>;
@@ -158,3 +197,7 @@ export type CreateCommentInput = z.infer<typeof createCommentSchema>;
 export type CreateChangelogInput = z.infer<typeof createChangelogSchema>;
 export type UpdateChangelogInput = z.infer<typeof updateChangelogSchema>;
 export type CreateApiKeyInput = z.infer<typeof createApiKeySchema>;
+export type CreateCustomerInput = z.infer<typeof createCustomerSchema>;
+export type UpdateCustomerInput = z.infer<typeof updateCustomerSchema>;
+export type IdentifyCustomerInput = z.infer<typeof identifyCustomerSchema>;
+export type CreateCustomerRequestInput = z.infer<typeof createCustomerRequestSchema>;

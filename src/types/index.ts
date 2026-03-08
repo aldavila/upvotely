@@ -1,4 +1,4 @@
-import type { Organization, Board, Post, Status, Tag, User, Vote, Comment, ChangelogEntry } from '@prisma/client';
+import type { Organization, Board, Post, Status, Tag, User, Vote, Comment, ChangelogEntry, Customer, CustomerRequest } from '@prisma/client';
 
 // Extended types with relations
 export type BoardWithRelations = Board & {
@@ -31,6 +31,17 @@ export type ChangelogEntryWithRelations = ChangelogEntry & {
     title: string;
     board: { slug: string };
   }>;
+};
+
+export type CustomerWithRelations = Customer & {
+  _count: {
+    requests: number;
+  };
+};
+
+export type CustomerRequestWithRelations = CustomerRequest & {
+  customer: Pick<Customer, 'id' | 'name' | 'company' | 'mrr'>;
+  post: Pick<Post, 'id' | 'title'>;
 };
 
 // API Response types
