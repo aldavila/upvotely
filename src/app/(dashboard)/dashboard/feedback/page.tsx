@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { computeFeedbackStats } from '@/lib/feedback-stats';
 import {
   Card,
   CardContent,
@@ -26,118 +27,22 @@ async function getFeedbackData(userId: string) {
 
   if (!membership) return null;
 
-  const orgId = membership.organizationId;
-  const since = new Date();
-  since.setDate(since.getDate() - 30);
-
-  const baseWhere = {
-    organizationId: orgId,
-    createdAt: { gte: since },
-  };
-
-  const [totalCount, positiveCount, negativeCount, recentFeedback] = await Promise.all([
-    db.conversationFeedback.count({ where: baseWhere }),
-    db.conversationFeedback.count({ where: { ...baseWhere, rating: 'positive' } }),
-    db.conversationFeedback.count({ where: { ...baseWhere, rating: 'negative' } }),
+  const [stats, recentFeedback] = await Promise.all([
+    computeFeedbackStats(membership.organizationId, 30),
     db.conversationFeedback.findMany({
-      where: { ...baseWhere, rating: 'negative' },
+      where: {
+        organizationId: membership.organizationId,
+        createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+        rating: 'negative',
+      },
       orderBy: { createdAt: 'desc' },
       take: 10,
     }),
   ]);
 
-  const satisfactionRate = totalCount > 0
-    ? Math.round((positiveCount / totalCount) * 100)
-    : 0;
-
-  // Per-agent stats
-  const agentStats = await db.conversationFeedback.groupBy({
-    by: ['agentId', 'agentName', 'rating'],
-    where: baseWhere,
-    _count: true,
-  });
-
-  const agentMap = new Map<string, {
-    agentId: string;
-    agentName: string | null;
-    positive: number;
-    negative: number;
-    total: number;
-  }>();
-
-  for (const row of agentStats) {
-    const key = row.agentId ?? 'unknown';
-    const existing = agentMap.get(key) ?? {
-      agentId: key,
-      agentName: row.agentName,
-      positive: 0,
-      negative: 0,
-      total: 0,
-    };
-    if (row.rating === 'positive') existing.positive += row._count;
-    else existing.negative += row._count;
-    existing.total += row._count;
-    agentMap.set(key, existing);
-  }
-
-  const agents = Array.from(agentMap.values())
-    .map((a) => ({
-      ...a,
-      satisfactionRate: a.total > 0 ? Math.round((a.positive / a.total) * 100) : 0,
-    }))
-    .sort((a, b) => b.total - a.total);
-
-  // Negative feedback tag themes
-  const negativeFeedback = await db.conversationFeedback.findMany({
-    where: { ...baseWhere, rating: 'negative' },
-    select: { tags: true },
-  });
-
-  const tagCounts = new Map<string, number>();
-  for (const fb of negativeFeedback) {
-    for (const tag of fb.tags) {
-      tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
-    }
-  }
-
-  const negativeThemes = Array.from(tagCounts.entries())
-    .map(([tag, count]) => ({ tag, count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 10);
-
-  // Daily trend (last 30 days)
-  const allFeedback = await db.conversationFeedback.findMany({
-    where: baseWhere,
-    select: { createdAt: true, rating: true },
-    orderBy: { createdAt: 'asc' },
-  });
-
-  const dailyMap = new Map<string, { positive: number; negative: number }>();
-  for (const fb of allFeedback) {
-    const day = fb.createdAt.toISOString().slice(0, 10);
-    const existing = dailyMap.get(day) ?? { positive: 0, negative: 0 };
-    if (fb.rating === 'positive') existing.positive++;
-    else existing.negative++;
-    dailyMap.set(day, existing);
-  }
-
-  const dailyTrend = Array.from(dailyMap.entries())
-    .map(([date, counts]) => ({
-      date,
-      ...counts,
-      total: counts.positive + counts.negative,
-      rate: counts.positive + counts.negative > 0
-        ? Math.round((counts.positive / (counts.positive + counts.negative)) * 100)
-        : 0,
-    }))
-    .sort((a, b) => a.date.localeCompare(b.date));
-
   return {
     organization: membership.organization,
-    overview: { total: totalCount, positive: positiveCount, negative: negativeCount, satisfactionRate },
-    agents,
-    negativeThemes,
-    dailyTrend,
+    ...stats,
     recentNegative: recentFeedback,
   };
 }
