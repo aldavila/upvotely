@@ -342,5 +342,27 @@
     "notFound": "Page not found",
     "unauthorized": "You don't have permission to access this.",
     "validation": "Please check your input and try again."
+  },
+  "integrations": {
+    "title": "Integrations",
+    "description": "Connect your tools to Upvotely",
+    "linear": {
+      "title": "Linear",
+      "description": "Create issues and sync status with Linear",
+      "apiKey": "API Key",
+      "apiKeyDescription": "Your Linear API key",
+      "teamId": "Team ID",
+      "teamIdDescription": "The Linear team to create issues in",
+      "createIssue": "Create Linear Issue",
+      "issueCreated": "Linear issue created successfully",
+      "issueFailed": "Failed to create Linear issue",
+      "linkedIssue": "Linked Linear Issue",
+      "viewOnLinear": "View on Linear",
+      "connected": "Connected",
+      "disconnected": "Not Connected",
+      "save": "Save Configuration",
+      "webhookUrl": "Webhook URL",
+      "webhookUrlDescription": "Add this URL to your Linear webhook settings"
+    }
   }
 }
