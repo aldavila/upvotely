@@ -214,6 +214,20 @@
     "deleteOrg": "Eliminar Organización",
     "cancelSubscription": "Cancelar Suscripción"
   },
+  "customers": {
+    "title": "Clientes",
+    "identify": "Identificar Cliente",
+    "empty": "Aún no hay clientes",
+    "emptyDescription": "Usa la API de Identificación para sincronizar tus clientes y sus datos de ingresos.",
+    "name": "Nombre",
+    "email": "Correo Electrónico",
+    "company": "Empresa",
+    "mrr": "MRR",
+    "plan": "Plan",
+    "requests": "Solicitudes",
+    "totalMrr": "MRR Total Solicitante",
+    "search": "Buscar clientes..."
+  },
   "errors": {
     "generic": "Algo salió mal. Por favor intenta de nuevo.",
     "notFound": "Página no encontrada",
