@@ -157,7 +157,6 @@ export const identifyCustomerSchema = z.object({
 });
 
 export const createCustomerRequestSchema = z.object({
-  externalId: z.string().min(1, 'Customer external ID is required'),
   postId: z.string().cuid(),
   priority: z.number().int().min(1).max(5).optional(),
 });
