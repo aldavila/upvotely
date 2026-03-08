@@ -169,6 +169,28 @@ export const listConversationFeedbackSchema = z.object({
   endDate: z.string().datetime().optional(),
 });
 
+// Customer validators
+export const identifyCustomerSchema = z.object({
+  externalId: z.string().min(1, 'External ID is required').max(255),
+  name: z.string().max(255).optional(),
+  email: z.string().email().optional(),
+  company: z.string().max(255).optional(),
+  mrr: z.number().min(0).optional(),
+  plan: z.string().max(100).optional(),
+  attributes: z.record(z.unknown()).optional(),
+});
+
+export const createCustomerRequestSchema = z.object({
+  postId: z.string().cuid(),
+  priority: z.number().int().min(1).max(5).optional(),
+});
+
+export const listCustomersSchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  search: z.string().optional(),
+});
+
 // Type exports
 export type SignUpInput = z.infer<typeof signUpSchema>;
 export type SignInInput = z.infer<typeof signInSchema>;
@@ -183,3 +205,5 @@ export type CreateChangelogInput = z.infer<typeof createChangelogSchema>;
 export type UpdateChangelogInput = z.infer<typeof updateChangelogSchema>;
 export type CreateApiKeyInput = z.infer<typeof createApiKeySchema>;
 export type CreateConversationFeedbackInput = z.infer<typeof createConversationFeedbackSchema>;
+export type IdentifyCustomerInput = z.infer<typeof identifyCustomerSchema>;
+export type CreateCustomerRequestInput = z.infer<typeof createCustomerRequestSchema>;
