@@ -28,6 +28,9 @@ model User {
   votes         Vote[]
   comments      Comment[]
   apiKeys       ApiKey[]
+  notifications           Notification[]
+  notificationPreferences NotificationPreference[]
+  postSubscriptions       PostSubscription[]
 
   @@index([email])
   @@map("users")
@@ -267,6 +270,7 @@ model Post {
   customerRequests      CustomerRequest[]
   mergeSuggestionsSource MergeSuggestion[] @relation("MergeSuggestionSource")
   mergeSuggestionsTarget MergeSuggestion[] @relation("MergeSuggestionTarget")
+  subscriptions          PostSubscription[]
 
   @@index([boardId, statusId])
   @@index([boardId, voteCount(sort: Desc)])
@@ -513,4 +517,72 @@ model WebhookEvent {
 
   @@index([organizationId, status])
   @@map("webhook_events")
+}
+
+// ============================================
+// Notification Models
+// ============================================
+
+model Notification {
+  id             String   @id @default(cuid())
+  userId         String
+  organizationId String
+  type           String   // new_post, status_change, new_comment, mention, vote_milestone
+  title          String
+  message        String   @db.Text
+  link           String?
+  isRead         Boolean  @default(false)
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("notifications")
+}
+
+model NotificationPreference {
+  id             String   @id @default(cuid())
+  userId         String
+  organizationId String
+
+  // In-app notifications
+  inAppNewPost         Boolean @default(true)
+  inAppStatusChange    Boolean @default(true)
+  inAppNewComment      Boolean @default(true)
+  inAppMention         Boolean @default(true)
+
+  // Email notifications
+  emailNewPost         Boolean @default(true)
+  emailStatusChange    Boolean @default(true)
+  emailNewComment      Boolean @default(true)
+  emailMention         Boolean @default(true)
+
+  // Digest preferences
+  emailDigest          String  @default("instant") // instant, daily, weekly, none
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@map("notification_preferences")
+}
+
+
+model PostSubscription {
+  id           String   @id @default(cuid())
+  postId       String
+  userId       String
+  isSubscribed Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@map("post_subscriptions")
 }
