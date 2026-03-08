@@ -1,27 +1,38 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { authenticateApiKey } from '@/lib/api-auth';
 import { createBoardSchema } from '@/lib/validators';
 import { z } from 'zod';
 
-export async function GET(): Promise<NextResponse> {
+export async function GET(req: Request): Promise<NextResponse> {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    let orgId: string;
 
-    const membership = await db.organizationMember.findFirst({
-      where: { userId: session.user.id },
-    });
+    // Dual auth: try API key first, then session
+    const apiKeyResult = await authenticateApiKey(req, 'read');
+    if (apiKeyResult) {
+      orgId = apiKeyResult.organizationId;
+    } else {
+      const session = await auth();
+      if (!session?.user?.id) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
 
-    if (!membership) {
-      return NextResponse.json({ error: 'No organization found' }, { status: 404 });
+      const membership = await db.organizationMember.findFirst({
+        where: { userId: session.user.id },
+      });
+
+      if (!membership) {
+        return NextResponse.json({ error: 'No organization found' }, { status: 404 });
+      }
+
+      orgId = membership.organizationId;
     }
 
     const boards = await db.board.findMany({
       where: {
-        organizationId: membership.organizationId,
+        organizationId: orgId,
         isArchived: false,
       },
       include: {
@@ -63,14 +74,14 @@ export async function POST(req: Request): Promise<NextResponse> {
 
     const body = await req.json();
     const parseResult = createBoardSchema.safeParse(body);
-    
+
     if (!parseResult.success) {
       return NextResponse.json(
         { error: 'Invalid input data', details: parseResult.error.issues.map(e => e.message) },
         { status: 400 }
       );
     }
-    
+
     const validatedData = parseResult.data;
 
     // Sanitize inputs
@@ -163,7 +174,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     if (process.env.NODE_ENV === 'development') {
       console.error('Error creating board:', error);
     }
-    
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Invalid input data' },
