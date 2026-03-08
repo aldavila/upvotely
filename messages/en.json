@@ -214,6 +214,24 @@
     "deleteOrg": "Delete Organization",
     "cancelSubscription": "Cancel Subscription"
   },
+  "conversationFeedback": {
+    "title": "Conversation Feedback",
+    "description": "Track satisfaction across customer conversations",
+    "satisfactionRate": "Satisfaction Rate",
+    "totalConversations": "Total Conversations",
+    "positiveRating": "Positive",
+    "negativeRating": "Negative",
+    "byAgent": "By Agent",
+    "negativeThemes": "Negative Feedback Themes",
+    "dailyTrend": "Daily Trend",
+    "empty": "No conversation feedback yet",
+    "emptyDescription": "Use the API to submit per-conversation feedback.",
+    "period": {
+      "7d": "Last 7 days",
+      "30d": "Last 30 days",
+      "90d": "Last 90 days"
+    }
+  },
   "errors": {
     "generic": "Something went wrong. Please try again.",
     "notFound": "Page not found",

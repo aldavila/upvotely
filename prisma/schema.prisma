@@ -110,11 +110,12 @@ model Organization {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  members    OrganizationMember[]
-  boards     Board[]
-  statuses   Status[]
-  changelog  ChangelogEntry[]
-  apiKeys    ApiKey[]
+  members              OrganizationMember[]
+  boards               Board[]
+  statuses             Status[]
+  changelog            ChangelogEntry[]
+  apiKeys              ApiKey[]
+  conversationFeedback ConversationFeedback[]
 
   @@map("organizations")
 }
@@ -358,6 +359,47 @@ model ApiKey {
 
   @@index([keyHash])
   @@map("api_keys")
+}
+
+// ============================================
+// Conversation Feedback Model
+// ============================================
+
+model ConversationFeedback {
+  id             String   @id @default(cuid())
+  organizationId String
+
+  // Conversation reference
+  conversationId String   // External conversation/ticket ID
+  source         String   @default("api") // api, widget, intercom, zendesk, etc.
+
+  // Agent info
+  agentName      String?
+  agentId        String?  // External agent ID
+
+  // Feedback
+  rating         String   // "positive" or "negative"
+  comment        String?  @db.Text
+  tags           String[] @default([]) // e.g. ["slow_response", "wrong_answer"]
+
+  // Customer info
+  customerExternalId String?
+  customerEmail      String?
+  customerName       String?
+
+  // Metadata
+  metadata       Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([organizationId, rating])
+  @@index([organizationId, agentId])
+  @@index([conversationId])
+  @@map("conversation_feedback")
 }
 
 // ============================================

@@ -214,6 +214,24 @@
     "deleteOrg": "Eliminar Organización",
     "cancelSubscription": "Cancelar Suscripción"
   },
+  "conversationFeedback": {
+    "title": "Feedback de Conversaciones",
+    "description": "Rastrea la satisfacción en las conversaciones con clientes",
+    "satisfactionRate": "Tasa de Satisfacción",
+    "totalConversations": "Total de Conversaciones",
+    "positiveRating": "Positivo",
+    "negativeRating": "Negativo",
+    "byAgent": "Por Agente",
+    "negativeThemes": "Temas de Feedback Negativo",
+    "dailyTrend": "Tendencia Diaria",
+    "empty": "Aún no hay feedback de conversaciones",
+    "emptyDescription": "Usa la API para enviar feedback por conversación.",
+    "period": {
+      "7d": "Últimos 7 días",
+      "30d": "Últimos 30 días",
+      "90d": "Últimos 90 días"
+    }
+  },
   "errors": {
     "generic": "Algo salió mal. Por favor intenta de nuevo.",
     "notFound": "Página no encontrada",
