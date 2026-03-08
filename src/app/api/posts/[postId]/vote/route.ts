@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { authenticateApiKey } from '@/lib/api-auth';
 import { z } from 'zod';
 
 const postIdSchema = z.string().cuid();
@@ -10,14 +11,75 @@ export async function POST(
   { params }: { params: Promise<{ postId: string }> }
 ): Promise<NextResponse> {
   try {
+    let userId: string | null = null;
+
+    // Dual auth: try API key first, then session
+    const apiKeyResult = await authenticateApiKey(req, 'write');
+    if (apiKeyResult) {
+      // For API key auth, we need a userId from the request body
+      // since votes are per-user. Parse optional userId from body.
+      const body = await req.json().catch(() => ({}));
+      userId = body.userId ?? null;
+      if (!userId) {
+        return NextResponse.json(
+          { error: 'userId is required when using API key authentication' },
+          { status: 400 }
+        );
+      }
+
+      // Verify the post belongs to the API key's org
+      const { postId } = await params;
+      const parseResult = postIdSchema.safeParse(postId);
+      if (!parseResult.success) {
+        return NextResponse.json({ error: 'Invalid post ID' }, { status: 400 });
+      }
+
+      const post = await db.post.findUnique({
+        where: { id: postId },
+        include: { board: true },
+      });
+
+      if (!post || post.board.organizationId !== apiKeyResult.organizationId) {
+        return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+      }
+
+      // Toggle vote
+      const result = await db.$transaction(async (tx) => {
+        const existingVote = await tx.vote.findUnique({
+          where: { postId_userId: { postId, userId: userId! } },
+        });
+
+        if (existingVote) {
+          await tx.vote.delete({ where: { id: existingVote.id } });
+          const updatedPost = await tx.post.update({
+            where: { id: postId },
+            data: { voteCount: { decrement: 1 } },
+            select: { voteCount: true },
+          });
+          return { voted: false, voteCount: updatedPost.voteCount };
+        }
+
+        await tx.vote.create({ data: { postId, userId: userId! } });
+        const updatedPost = await tx.post.update({
+          where: { id: postId },
+          data: { voteCount: { increment: 1 } },
+          select: { voteCount: true },
+        });
+        return { voted: true, voteCount: updatedPost.voteCount };
+      });
+
+      return NextResponse.json(result);
+    }
+
+    // Fall back to session auth
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = session.user.id;
+    userId = session.user.id;
     const { postId } = await params;
-    
+
     // Validate postId format
     const parseResult = postIdSchema.safeParse(postId);
     if (!parseResult.success) {
@@ -41,7 +103,7 @@ export async function POST(
         where: {
           postId_userId: {
             postId,
-            userId,
+            userId: userId!,
           },
         },
       });
@@ -66,7 +128,7 @@ export async function POST(
       await tx.vote.create({
         data: {
           postId,
-          userId,
+          userId: userId!,
         },
       });
 
@@ -85,7 +147,7 @@ export async function POST(
     if (error instanceof Error && error.message === 'Post not found') {
       return NextResponse.json({ error: 'Post not found' }, { status: 404 });
     }
-    
+
     if (process.env.NODE_ENV === 'development') {
       console.error('Error voting:', error);
     }
@@ -101,7 +163,6 @@ export async function GET(
   { params }: { params: Promise<{ postId: string }> }
 ): Promise<NextResponse> {
   try {
-    const session = await auth();
     const { postId } = await params;
 
     // Validate postId format
@@ -110,6 +171,26 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid post ID' }, { status: 400 });
     }
 
+    // Dual auth: try API key first, then session
+    const apiKeyResult = await authenticateApiKey(req, 'read');
+    if (apiKeyResult) {
+      // Verify post belongs to org
+      const post = await db.post.findUnique({
+        where: { id: postId },
+        include: { board: { select: { organizationId: true } } },
+      });
+
+      if (!post || post.board.organizationId !== apiKeyResult.organizationId) {
+        return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+      }
+
+      return NextResponse.json({
+        voteCount: post.voteCount,
+        hasVoted: false, // API key auth has no user context for hasVoted
+      });
+    }
+
+    // Fall back to session auth
     const post = await db.post.findUnique({
       where: { id: postId },
       select: { voteCount: true },
@@ -120,6 +201,7 @@ export async function GET(
     }
 
     let hasVoted = false;
+    const session = await auth();
     if (session?.user?.id) {
       const vote = await db.vote.findUnique({
         where: {

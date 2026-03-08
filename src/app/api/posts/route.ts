@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { authenticateApiKey } from '@/lib/api-auth';
 import { createPostSchema } from '@/lib/validators';
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
@@ -17,7 +18,7 @@ const getPostsQuerySchema = z.object({
 export async function GET(req: Request): Promise<NextResponse> {
   try {
     const { searchParams } = new URL(req.url);
-    
+
     const queryResult = getPostsQuerySchema.safeParse({
       boardId: searchParams.get('boardId'),
       status: searchParams.get('status') || undefined,
@@ -34,6 +35,21 @@ export async function GET(req: Request): Promise<NextResponse> {
     }
 
     const { boardId, status, sort, page, limit } = queryResult.data;
+
+    // Dual auth: try API key first, then session
+    const apiKeyResult = await authenticateApiKey(req, 'read');
+    if (apiKeyResult) {
+      // Verify board belongs to the API key's org
+      const board = await db.board.findUnique({
+        where: { id: boardId },
+        select: { organizationId: true },
+      });
+
+      if (!board || board.organizationId !== apiKeyResult.organizationId) {
+        return NextResponse.json({ error: 'Board not found' }, { status: 404 });
+      }
+    }
+    // No API key — public endpoint for reading posts (existing behavior)
 
     // Build where clause with proper typing
     const where: Prisma.PostWhereInput = {
@@ -103,9 +119,22 @@ export async function GET(req: Request): Promise<NextResponse> {
 
 export async function POST(req: Request): Promise<NextResponse> {
   try {
-    const session = await auth();
+    // Dual auth: try API key first, then session
+    let userId: string | null = null;
+    let orgId: string | null = null;
+
+    const apiKeyResult = await authenticateApiKey(req, 'write');
+    if (apiKeyResult) {
+      orgId = apiKeyResult.organizationId;
+    } else {
+      const session = await auth();
+      if (session?.user?.id) {
+        userId = session.user.id;
+      }
+    }
+
     const body = await req.json();
-    
+
     const parseResult = createPostSchema.safeParse(body);
     if (!parseResult.success) {
       return NextResponse.json(
@@ -113,7 +142,7 @@ export async function POST(req: Request): Promise<NextResponse> {
         { status: 400 }
       );
     }
-    
+
     const validatedData = parseResult.data;
 
     // Get the board and verify access
@@ -126,8 +155,13 @@ export async function POST(req: Request): Promise<NextResponse> {
       return NextResponse.json({ error: 'Board not found' }, { status: 404 });
     }
 
+    // If using API key, verify board belongs to the org
+    if (orgId && board.organizationId !== orgId) {
+      return NextResponse.json({ error: 'Board not found' }, { status: 404 });
+    }
+
     // Check if anonymous posting is allowed or user is authenticated
-    if (!board.allowAnonymous && !session?.user?.id) {
+    if (!board.allowAnonymous && !userId && !orgId) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
@@ -157,9 +191,9 @@ export async function POST(req: Request): Promise<NextResponse> {
           title: sanitizedTitle,
           content: sanitizedContent,
           boardId: validatedData.boardId,
-          authorId: validatedData.isAnonymous ? null : session?.user?.id,
+          authorId: (validatedData.isAnonymous || !userId) ? null : userId,
           statusId: defaultStatus.id,
-          isAnonymous: validatedData.isAnonymous ?? false,
+          isAnonymous: validatedData.isAnonymous ?? (!userId),
           isApproved: !board.requireApproval,
           tags: validatedData.tagIds
             ? { connect: validatedData.tagIds.map((id) => ({ id })) }
@@ -177,12 +211,12 @@ export async function POST(req: Request): Promise<NextResponse> {
         },
       });
 
-      // Auto-upvote by author if not anonymous
-      if (session?.user?.id && !validatedData.isAnonymous) {
+      // Auto-upvote by author if not anonymous and has userId
+      if (userId && !validatedData.isAnonymous) {
         await tx.vote.create({
           data: {
             postId: post.id,
-            userId: session.user.id,
+            userId,
           },
         });
 
@@ -201,7 +235,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     if (process.env.NODE_ENV === 'development') {
       console.error('Error creating post:', error);
     }
-    
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Invalid input data' },
