@@ -84,38 +84,39 @@ model Organization {
   description String?
   logo        String?
   favicon     String?
-  
+
   // Branding customization
   primaryColor   String  @default("#7c3aed")
   accentColor    String  @default("#a78bfa")
   showBranding   Boolean @default(true) // "Powered by Upvotely"
-  
+
   // Custom domain
   customDomain      String?  @unique
   domainVerified    Boolean  @default(false)
   domainVerifiedAt  DateTime?
-  
+
   // Feature flags (for plan-based access)
   plan              String   @default("free") // free, starter, pro, agency
   boardsLimit       Int      @default(1)
-  
+
   // Usage tracking (for billing)
   boardsCount       Int      @default(0)
-  
+
   // Webhook configuration
   webhookUrl        String?
   webhookSecret     String?
   webhookEvents     String[] @default([])
-  
+
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  members    OrganizationMember[]
-  boards     Board[]
-  statuses   Status[]
-  changelog  ChangelogEntry[]
-  apiKeys    ApiKey[]
-  customers  Customer[]
+  members              OrganizationMember[]
+  boards               Board[]
+  statuses             Status[]
+  changelog            ChangelogEntry[]
+  apiKeys              ApiKey[]
+  conversationFeedback ConversationFeedback[]
+  customers            Customer[]
 
   @@map("organizations")
 }
@@ -145,20 +146,20 @@ model Board {
   name           String
   slug           String
   description    String?
-  
+
   // Board settings
   isPublic         Boolean @default(true)
   allowAnonymous   Boolean @default(false)
   requireApproval  Boolean @default(false)
   showVoteCount    Boolean @default(true)
-  
+
   // Ordering
   position         Int     @default(0)
-  
+
   // Archive status
   isArchived       Boolean @default(false)
   archivedAt       DateTime?
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -176,18 +177,18 @@ model Status {
   name           String
   slug           String
   color          String   @default("#6b7280")
-  
+
   // Status type for filtering
   type           String   @default("default") // open, under_review, planned, in_progress, complete, closed
-  
+
   // Display order
   position       Int      @default(0)
-  
+
   // Whether to show on roadmap
   showOnRoadmap  Boolean  @default(false)
-  
+
   isDefault      Boolean  @default(false)
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -203,7 +204,7 @@ model Tag {
   boardId  String
   name     String
   color    String   @default("#6b7280")
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -219,30 +220,30 @@ model Post {
   boardId   String
   authorId  String?  // Can be null for anonymous posts
   statusId  String
-  
+
   title     String
   content   String   @db.Text
-  
+
   // Vote count (denormalized for performance)
   voteCount Int      @default(0)
 
   // Revenue-weighted prioritization (denormalized)
   priorityScore      Float  @default(0)
   totalRequestingMrr Float  @default(0)
-  
+
   // Moderation
   isApproved Boolean  @default(true)
   isPinned   Boolean  @default(false)
-  
+
   // Merged posts
   mergedIntoId String?
-  
+
   // Anonymous posting
   isAnonymous  Boolean  @default(false)
-  
+
   // ETA for roadmap
   eta          DateTime?
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -269,7 +270,7 @@ model Vote {
   id       String   @id @default(cuid())
   postId   String
   userId   String
-  
+
   createdAt DateTime @default(now())
 
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
@@ -284,12 +285,12 @@ model Comment {
   postId   String
   authorId String
   parentId String?
-  
+
   content  String   @db.Text
-  
+
   // Internal comments visible only to team
   isInternal Boolean @default(false)
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -309,20 +310,20 @@ model Comment {
 model ChangelogEntry {
   id             String   @id @default(cuid())
   organizationId String
-  
+
   title          String
   content        String   @db.Text
-  
+
   // Category/type
   type           String   @default("improvement") // feature, improvement, fix, other
-  
+
   // Publishing
   isPublished    Boolean  @default(false)
   publishedAt    DateTime?
-  
+
   // Image/media
   imageUrl       String?
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -341,21 +342,21 @@ model ApiKey {
   id             String   @id @default(cuid())
   organizationId String
   userId         String   // Created by
-  
+
   name           String
   keyHash        String   @unique // Hashed API key
   keyPrefix      String   // First 8 chars for identification
-  
+
   // Permissions
   scopes         String[] @default(["read"])
-  
+
   // Usage tracking
   lastUsedAt     DateTime?
   usageCount     Int      @default(0)
-  
+
   // Expiration
   expiresAt      DateTime?
-  
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -364,6 +365,47 @@ model ApiKey {
 
   @@index([keyHash])
   @@map("api_keys")
+}
+
+// ============================================
+// Conversation Feedback Model
+// ============================================
+
+model ConversationFeedback {
+  id             String   @id @default(cuid())
+  organizationId String
+
+  // Conversation reference
+  conversationId String   // External conversation/ticket ID
+  source         String   @default("api") // api, widget, intercom, zendesk, etc.
+
+  // Agent info
+  agentName      String?
+  agentId        String?  // External agent ID
+
+  // Feedback
+  rating         String   // "positive" or "negative"
+  comment        String?  @db.Text
+  tags           String[] @default([]) // e.g. ["slow_response", "wrong_answer"]
+
+  // Customer info
+  customerExternalId String?
+  customerEmail      String?
+  customerName       String?
+
+  // Metadata
+  metadata       Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([organizationId, rating])
+  @@index([organizationId, agentId])
+  @@index([conversationId])
+  @@map("conversation_feedback")
 }
 
 // ============================================
