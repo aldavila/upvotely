@@ -214,6 +214,38 @@
     "deleteOrg": "Eliminar Organización",
     "cancelSubscription": "Cancelar Suscripción"
   },
+  "conversationFeedback": {
+    "title": "Feedback de Conversaciones",
+    "description": "Rastrea la satisfacción en conversaciones con agentes IA",
+    "stats": {
+      "total": "Total de Feedback",
+      "positive": "Positivo",
+      "negative": "Negativo",
+      "neutral": "Neutral",
+      "satisfactionRate": "Tasa de Satisfacción"
+    },
+    "filters": {
+      "agentId": "Agente",
+      "rating": "Calificación",
+      "startDate": "Fecha Inicio",
+      "endDate": "Fecha Fin",
+      "allAgents": "Todos los Agentes",
+      "allRatings": "Todas las Calificaciones"
+    },
+    "table": {
+      "session": "Sesión",
+      "agent": "Agente",
+      "rating": "Calificación",
+      "comment": "Comentario",
+      "date": "Fecha",
+      "noFeedback": "Aún no hay feedback",
+      "noFeedbackDescription": "El feedback aparecerá aquí cuando las conversaciones sean calificadas."
+    },
+    "byAgent": "Por Agente",
+    "recentNegative": "Feedback Negativo Reciente",
+    "averageRating": "Calificación Promedio",
+    "count": "Cantidad"
+  },
   "errors": {
     "generic": "Algo salió mal. Por favor intenta de nuevo.",
     "notFound": "Página no encontrada",

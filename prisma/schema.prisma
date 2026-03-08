@@ -115,6 +115,7 @@ model Organization {
   statuses   Status[]
   changelog  ChangelogEntry[]
   apiKeys    ApiKey[]
+  conversationFeedback ConversationFeedback[]
 
   @@map("organizations")
 }
@@ -325,6 +326,31 @@ model ChangelogEntry {
 
   @@index([organizationId, publishedAt(sort: Desc)])
   @@map("changelog_entries")
+}
+
+// ============================================
+// Conversation Feedback Models
+// ============================================
+
+model ConversationFeedback {
+  id             String   @id @default(cuid())
+  organizationId String
+  sessionId      String
+  agentId        String?
+  rating         Int
+  comment        String?  @db.Text
+  context        Json?
+  metadata       Json?
+  tags           String[] @default([])
+  userId         String?
+  createdAt      DateTime @default(now())
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, agentId, createdAt(sort: Desc)])
+  @@index([organizationId, rating])
+  @@index([organizationId, sessionId])
+  @@map("conversation_feedback")
 }
 
 // ============================================
