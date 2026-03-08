@@ -214,6 +214,18 @@
     "deleteOrg": "Delete Organization",
     "cancelSubscription": "Cancel Subscription"
   },
+  "prioritization": {
+    "title": "Revenue Prioritization",
+    "description": "Feature requests sorted by requesting customer MRR",
+    "totalCustomers": "Total Customers",
+    "totalMrrTracked": "Total MRR Tracked",
+    "revenueLinkedPosts": "Revenue-Linked Posts",
+    "prioritizedRequests": "Prioritized Feature Requests",
+    "sortedByScore": "Sorted by priority score (MRR x customer count)",
+    "empty": "No posts yet. Use the Identify API to link customers to feature requests.",
+    "score": "Score",
+    "rank": "Rank"
+  },
   "customers": {
     "title": "Customers",
     "identify": "Identify Customer",

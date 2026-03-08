@@ -214,6 +214,18 @@
     "deleteOrg": "Eliminar Organización",
     "cancelSubscription": "Cancelar Suscripción"
   },
+  "prioritization": {
+    "title": "Priorización por Ingresos",
+    "description": "Solicitudes de funciones ordenadas por MRR de clientes solicitantes",
+    "totalCustomers": "Total de Clientes",
+    "totalMrrTracked": "MRR Total Rastreado",
+    "revenueLinkedPosts": "Posts Vinculados a Ingresos",
+    "prioritizedRequests": "Solicitudes Priorizadas",
+    "sortedByScore": "Ordenadas por puntuación de prioridad (MRR x cantidad de clientes)",
+    "empty": "Aún no hay posts. Usa la API de Identificación para vincular clientes a solicitudes.",
+    "score": "Puntuación",
+    "rank": "Rango"
+  },
   "customers": {
     "title": "Clientes",
     "identify": "Identificar Cliente",
