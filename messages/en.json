@@ -214,6 +214,38 @@
     "deleteOrg": "Delete Organization",
     "cancelSubscription": "Cancel Subscription"
   },
+  "conversationFeedback": {
+    "title": "Conversation Feedback",
+    "description": "Track satisfaction across AI agent conversations",
+    "stats": {
+      "total": "Total Feedback",
+      "positive": "Positive",
+      "negative": "Negative",
+      "neutral": "Neutral",
+      "satisfactionRate": "Satisfaction Rate"
+    },
+    "filters": {
+      "agentId": "Agent",
+      "rating": "Rating",
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "allAgents": "All Agents",
+      "allRatings": "All Ratings"
+    },
+    "table": {
+      "session": "Session",
+      "agent": "Agent",
+      "rating": "Rating",
+      "comment": "Comment",
+      "date": "Date",
+      "noFeedback": "No feedback yet",
+      "noFeedbackDescription": "Feedback will appear here once conversations are rated."
+    },
+    "byAgent": "By Agent",
+    "recentNegative": "Recent Negative Feedback",
+    "averageRating": "Avg Rating",
+    "count": "Count"
+  },
   "errors": {
     "generic": "Something went wrong. Please try again.",
     "notFound": "Page not found",

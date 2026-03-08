@@ -145,6 +145,27 @@ export const createApiKeySchema = z.object({
   expiresAt: z.string().datetime().optional().nullable(),
 });
 
+// Conversation feedback validators
+export const createConversationFeedbackSchema = z.object({
+  sessionId: z.string().min(1).max(500),
+  agentId: z.string().max(255).optional(),
+  rating: z.number().int().min(-1).max(1),
+  comment: z.string().max(10000).optional(),
+  context: z.record(z.unknown()).optional(),
+  metadata: z.record(z.unknown()).optional(),
+  tags: z.array(z.string().max(100)).max(20).default([]),
+  userId: z.string().max(255).optional(),
+});
+
+export const getConversationFeedbackQuerySchema = z.object({
+  agentId: z.string().optional(),
+  rating: z.coerce.number().int().min(-1).max(1).optional(),
+  startDate: z.string().datetime().optional(),
+  endDate: z.string().datetime().optional(),
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
 // Type exports
 export type SignUpInput = z.infer<typeof signUpSchema>;
 export type SignInInput = z.infer<typeof signInSchema>;
@@ -158,3 +179,4 @@ export type CreateCommentInput = z.infer<typeof createCommentSchema>;
 export type CreateChangelogInput = z.infer<typeof createChangelogSchema>;
 export type UpdateChangelogInput = z.infer<typeof updateChangelogSchema>;
 export type CreateApiKeyInput = z.infer<typeof createApiKeySchema>;
+export type CreateConversationFeedbackInput = z.infer<typeof createConversationFeedbackSchema>;
