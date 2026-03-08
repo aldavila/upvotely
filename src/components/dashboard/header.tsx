@@ -13,9 +13,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
-import { Bell, Moon, Sun, Search, Menu, LogOut, Settings, User } from 'lucide-react';
+import { Moon, Sun, Search, Menu, LogOut, Settings, User } from 'lucide-react';
 import { getInitials } from '@/lib/utils';
 import Link from 'next/link';
+import { NotificationBell } from './notification-bell';
 
 interface DashboardHeaderProps {
   user: {
@@ -59,10 +60,7 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
         </Button>
 
         {/* Notifications */}
-        <Button variant="ghost" size="icon">
-          <Bell className="h-5 w-5" />
-          <span className="sr-only">Notifications</span>
-        </Button>
+        <NotificationBell />
 
         {/* User Menu */}
         <DropdownMenu>

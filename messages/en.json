@@ -342,5 +342,38 @@
     "notFound": "Page not found",
     "unauthorized": "You don't have permission to access this.",
     "validation": "Please check your input and try again."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "description": "Stay updated on your feedback",
+    "noNotifications": "No notifications yet",
+    "markAllRead": "Mark all as read",
+    "markAsRead": "Mark as read",
+    "viewAll": "View all notifications",
+    "unread": "Unread",
+    "all": "All",
+    "preferences": {
+      "title": "Notification Preferences",
+      "description": "Choose how you want to be notified",
+      "inApp": "In-App Notifications",
+      "email": "Email Notifications",
+      "newPost": "New posts on your boards",
+      "statusChange": "Status changes on voted posts",
+      "newComment": "New comments on your posts",
+      "mention": "Mentions",
+      "emailDigest": "Email frequency",
+      "instant": "Instant",
+      "daily": "Daily digest",
+      "weekly": "Weekly digest",
+      "none": "No emails",
+      "saved": "Preferences saved"
+    },
+    "types": {
+      "new_post": "New Post",
+      "status_change": "Status Change",
+      "new_comment": "New Comment",
+      "mention": "Mention",
+      "vote_milestone": "Vote Milestone"
+    }
   }
 }
