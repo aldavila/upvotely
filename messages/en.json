@@ -240,6 +240,20 @@
     "totalMrr": "Total Requesting MRR",
     "search": "Search customers..."
   },
+  "comments": {
+    "title": "Comments",
+    "empty": "No comments yet. Be the first to comment!",
+    "writeComment": "Write a comment...",
+    "writeReply": "Write a reply...",
+    "postComment": "Post Comment",
+    "postInternalNote": "Post Internal Note",
+    "reply": "Reply",
+    "internal": "Internal",
+    "internalNote": "Internal note",
+    "internalOnly": "Only visible to team members",
+    "showInternal": "Show internal notes",
+    "signInToComment": "Sign in to leave a comment."
+  },
   "errors": {
     "generic": "Something went wrong. Please try again.",
     "notFound": "Page not found",

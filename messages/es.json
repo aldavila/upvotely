@@ -240,6 +240,20 @@
     "totalMrr": "MRR Total Solicitante",
     "search": "Buscar clientes..."
   },
+  "comments": {
+    "title": "Comentarios",
+    "empty": "Aún no hay comentarios. ¡Sé el primero en comentar!",
+    "writeComment": "Escribe un comentario...",
+    "writeReply": "Escribe una respuesta...",
+    "postComment": "Publicar Comentario",
+    "postInternalNote": "Publicar Nota Interna",
+    "reply": "Responder",
+    "internal": "Interno",
+    "internalNote": "Nota interna",
+    "internalOnly": "Solo visible para miembros del equipo",
+    "showInternal": "Mostrar notas internas",
+    "signInToComment": "Inicia sesión para dejar un comentario."
+  },
   "errors": {
     "generic": "Algo salió mal. Por favor intenta de nuevo.",
     "notFound": "Página no encontrada",
