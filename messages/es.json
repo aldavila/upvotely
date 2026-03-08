@@ -214,6 +214,19 @@
     "deleteOrg": "Eliminar Organización",
     "cancelSubscription": "Cancelar Suscripción"
   },
+  "priorities": {
+    "title": "Prioridades",
+    "description": "Posts clasificados por impacto de ingresos y demanda de clientes.",
+    "totalRequestingMrr": "MRR Total Solicitante",
+    "postsWithRequests": "Posts con Solicitudes de Clientes",
+    "rankedPosts": "Total de Posts Clasificados",
+    "revenueWeighted": "Solicitudes Ponderadas por Ingresos",
+    "revenueWeightedDescription": "Ordenados por MRR total de clientes solicitantes",
+    "empty": "Aún no hay posts priorizados",
+    "emptyDescription": "Vincula solicitudes de clientes a posts para ver el impacto de ingresos.",
+    "requestingMrr": "MRR solicitante",
+    "customerRequests": "{count, plural, =0 {0 solicitudes de clientes} =1 {1 solicitud de cliente} other {# solicitudes de clientes}}"
+  },
   "errors": {
     "generic": "Algo salió mal. Por favor intenta de nuevo.",
     "notFound": "Página no encontrada",

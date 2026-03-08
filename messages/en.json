@@ -214,6 +214,19 @@
     "deleteOrg": "Delete Organization",
     "cancelSubscription": "Cancel Subscription"
   },
+  "priorities": {
+    "title": "Priorities",
+    "description": "Posts ranked by revenue impact and customer demand.",
+    "totalRequestingMrr": "Total Requesting MRR",
+    "postsWithRequests": "Posts with Customer Requests",
+    "rankedPosts": "Total Ranked Posts",
+    "revenueWeighted": "Revenue-Weighted Requests",
+    "revenueWeightedDescription": "Sorted by total MRR of requesting customers",
+    "empty": "No prioritized posts yet",
+    "emptyDescription": "Link customer requests to posts to see revenue impact.",
+    "requestingMrr": "requesting MRR",
+    "customerRequests": "{count, plural, =0 {0 customer requests} =1 {1 customer request} other {# customer requests}}"
+  },
   "errors": {
     "generic": "Something went wrong. Please try again.",
     "notFound": "Page not found",

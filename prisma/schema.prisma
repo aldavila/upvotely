@@ -237,7 +237,12 @@ model Post {
   
   // ETA for roadmap
   eta          DateTime?
-  
+
+  // Revenue-weighted prioritization
+  priorityScore        Float?   @default(0)
+  totalRequestingMrr   Float?   @default(0)
+  customerRequestCount Int      @default(0)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -255,6 +260,8 @@ model Post {
   @@index([boardId, voteCount(sort: Desc)])
   @@index([boardId, createdAt(sort: Desc)])
   @@index([boardId, isApproved])
+  @@index([boardId, priorityScore(sort: Desc)])
+  @@index([boardId, totalRequestingMrr(sort: Desc)])
   @@index([statusId])
   @@map("posts")
 }
