@@ -5,11 +5,16 @@ import { authenticateApiKey } from '@/lib/api-auth';
 import { createPostSchema } from '@/lib/validators';
 import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
+import { categorizeAndUpdatePost } from '@/lib/ai/categorize';
+import { analyzeAndUpdateSentiment } from '@/lib/ai/sentiment';
+import { createMergeSuggestions } from '@/lib/ai/similarity';
 
 // Query params validation schema
 const getPostsQuerySchema = z.object({
   boardId: z.string().cuid(),
   status: z.string().optional(),
+  aiCategory: z.string().optional(),
+  sentiment: z.string().optional(),
   sort: z.enum(['votes', 'newest', 'trending']).default('votes'),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
@@ -22,6 +27,8 @@ export async function GET(req: Request): Promise<NextResponse> {
     const queryResult = getPostsQuerySchema.safeParse({
       boardId: searchParams.get('boardId'),
       status: searchParams.get('status') || undefined,
+      aiCategory: searchParams.get('aiCategory') || undefined,
+      sentiment: searchParams.get('sentiment') || undefined,
       sort: searchParams.get('sort') || 'votes',
       page: searchParams.get('page') || '1',
       limit: searchParams.get('limit') || '20',
@@ -34,7 +41,7 @@ export async function GET(req: Request): Promise<NextResponse> {
       );
     }
 
-    const { boardId, status, sort, page, limit } = queryResult.data;
+    const { boardId, status, aiCategory, sentiment, sort, page, limit } = queryResult.data;
 
     // Dual auth: try API key first, then session
     const apiKeyResult = await authenticateApiKey(req, 'read');
@@ -60,6 +67,14 @@ export async function GET(req: Request): Promise<NextResponse> {
 
     if (status) {
       where.status = { slug: status };
+    }
+
+    if (aiCategory) {
+      where.aiCategory = aiCategory;
+    }
+
+    if (sentiment) {
+      where.sentiment = sentiment;
     }
 
     // Build orderBy with proper typing
@@ -229,6 +244,11 @@ export async function POST(req: Request): Promise<NextResponse> {
 
       return post;
     });
+
+    // Fire-and-forget: AI categorization, sentiment analysis, and duplicate detection
+    categorizeAndUpdatePost(result.id, sanitizedTitle, sanitizedContent).catch(() => {});
+    analyzeAndUpdateSentiment(result.id, sanitizedTitle, sanitizedContent).catch(() => {});
+    createMergeSuggestions(result.id, sanitizedTitle, sanitizedContent, validatedData.boardId).catch(() => {});
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {

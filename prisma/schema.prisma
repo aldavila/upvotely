@@ -241,6 +241,14 @@ model Post {
   // Anonymous posting
   isAnonymous  Boolean  @default(false)
 
+  // AI categorization
+  aiCategory   String?   // bug, feature, ux, performance, integration, docs, other
+  aiTags       String[]  @default([])
+
+  // AI sentiment analysis
+  sentiment      String?  // positive, neutral, negative
+  sentimentScore Float?   // 0.0 to 1.0
+
   // ETA for roadmap
   eta          DateTime?
 
@@ -256,7 +264,9 @@ model Post {
   comments         Comment[]
   tags             Tag[]          @relation("PostTags")
   changelogEntries ChangelogEntry[] @relation("ChangelogPosts")
-  customerRequests CustomerRequest[]
+  customerRequests      CustomerRequest[]
+  mergeSuggestionsSource MergeSuggestion[] @relation("MergeSuggestionSource")
+  mergeSuggestionsTarget MergeSuggestion[] @relation("MergeSuggestionTarget")
 
   @@index([boardId, statusId])
   @@index([boardId, voteCount(sort: Desc)])
@@ -458,6 +468,28 @@ model CustomerRequest {
   @@unique([customerId, postId])
   @@index([postId])
   @@map("customer_requests")
+}
+
+// ============================================
+// Merge Suggestions (duplicate detection)
+// ============================================
+
+model MergeSuggestion {
+  id           String   @id @default(cuid())
+  sourcePostId String
+  targetPostId String
+  similarity   Float    // 0.0 to 1.0
+  status       String   @default("pending") // pending, accepted, dismissed
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sourcePost Post @relation("MergeSuggestionSource", fields: [sourcePostId], references: [id], onDelete: Cascade)
+  targetPost Post @relation("MergeSuggestionTarget", fields: [targetPostId], references: [id], onDelete: Cascade)
+
+  @@unique([sourcePostId, targetPostId])
+  @@index([status])
+  @@map("merge_suggestions")
 }
 
 // ============================================

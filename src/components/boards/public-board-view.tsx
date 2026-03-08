@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -37,6 +37,8 @@ import {
   User,
 } from 'lucide-react';
 import { formatRelativeTime, getInitials } from '@/lib/utils';
+import { SearchAutocomplete } from '@/components/boards/search-autocomplete';
+import { useDebounce } from '@/hooks/use-debounce';
 
 interface Post {
   id: string;
@@ -104,6 +106,31 @@ export function PublicBoardView({
   const [localVoteCounts, setLocalVoteCounts] = useState<Record<string, number>>(
     Object.fromEntries(posts.map((p) => [p.id, p.voteCount]))
   );
+  const [similarPosts, setSimilarPosts] = useState<{ id: string; title: string; voteCount: number; status: { name: string; color: string } }[]>([]);
+  const [loadingSimilar, setLoadingSimilar] = useState(false);
+  const debouncedTitle = useDebounce(newPost.title, 300);
+
+  // Fetch similar posts when title changes in submit dialog
+  useEffect(() => {
+    if (debouncedTitle.length < 3 || !newPostOpen) {
+      setSimilarPosts([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingSimilar(true);
+    fetch(`/api/posts/search?boardId=${board.id}&q=${encodeURIComponent(debouncedTitle)}&mode=suggestions`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) setSimilarPosts(data.data || []);
+      })
+      .catch(() => {
+        if (!cancelled) setSimilarPosts([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingSimilar(false);
+      });
+    return () => { cancelled = true; };
+  }, [debouncedTitle, board.id, newPostOpen]);
 
   const updateFilters = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -253,6 +280,46 @@ export function PublicBoardView({
                       disabled={isSubmitting}
                     />
                   </div>
+                  {/* Similar post suggestions */}
+                  {(loadingSimilar || similarPosts.length > 0) && newPost.title.length >= 3 && (
+                    <div className="rounded-lg border bg-muted/50 p-3">
+                      <p className="mb-2 text-sm font-medium text-muted-foreground">
+                        Similar existing requests
+                      </p>
+                      {loadingSimilar ? (
+                        <div className="space-y-2">
+                          <Skeleton className="h-6 w-full" />
+                          <Skeleton className="h-6 w-3/4" />
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          {similarPosts.map((sp) => (
+                            <Link
+                              key={sp.id}
+                              href={`/${board.organization.slug}/${board.slug}/${sp.id}`}
+                              className="flex items-center justify-between rounded px-2 py-1.5 text-sm hover:bg-muted"
+                              onClick={() => setNewPostOpen(false)}
+                            >
+                              <span className="truncate">{sp.title}</span>
+                              <div className="ml-2 flex shrink-0 items-center gap-2">
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs"
+                                  style={{ borderColor: sp.status.color, color: sp.status.color }}
+                                >
+                                  {sp.status.name}
+                                </Badge>
+                                <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+                                  <ChevronUp className="h-3 w-3" />
+                                  {sp.voteCount}
+                                </span>
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label htmlFor="content">Description</Label>
                     <Textarea
@@ -309,15 +376,16 @@ export function PublicBoardView({
       <div className="border-b bg-muted/30">
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <form onSubmit={handleSearch} className="relative flex-1 sm:max-w-xs">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search feedback..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
-            </form>
+            <SearchAutocomplete
+              boardId={board.id}
+              value={search}
+              onChange={setSearch}
+              onSubmit={handleSearch}
+              onSelect={(postId) => {
+                router.push(`/${board.organization.slug}/${board.slug}/${postId}`);
+              }}
+              className="flex-1 sm:max-w-xs"
+            />
             <div className="flex gap-2">
               <Select value={currentStatus} onValueChange={(v) => updateFilters('status', v)}>
                 <SelectTrigger className="w-[140px]">
