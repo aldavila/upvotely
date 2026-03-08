@@ -342,5 +342,29 @@
     "notFound": "Page not found",
     "unauthorized": "You don't have permission to access this.",
     "validation": "Please check your input and try again."
+  },
+  "integrations": {
+    "title": "Integrations",
+    "description": "Connect your tools to Upvotely",
+    "github": {
+      "title": "GitHub",
+      "description": "Create issues and sync status with GitHub",
+      "accessToken": "Personal Access Token",
+      "accessTokenDescription": "GitHub PAT with repo scope",
+      "owner": "Repository Owner",
+      "repo": "Repository Name",
+      "defaultLabels": "Default Labels",
+      "defaultLabelsDescription": "Labels to add to all created issues (comma-separated)",
+      "createIssue": "Create GitHub Issue",
+      "issueCreated": "GitHub issue created successfully",
+      "issueFailed": "Failed to create GitHub issue",
+      "linkedIssue": "Linked GitHub Issue",
+      "viewOnGitHub": "View on GitHub",
+      "connected": "Connected",
+      "disconnected": "Not Connected",
+      "save": "Save Configuration",
+      "webhookUrl": "Webhook URL",
+      "webhookUrlDescription": "Add this URL to your GitHub repository webhook settings"
+    }
   }
 }
