@@ -144,10 +144,12 @@ server.tool(
   'Toggle a vote on a post (upvote if not voted, remove if already voted)',
   {
     postId: z.string().describe('The post ID to vote on'),
+    userId: z.string().describe('The user ID to vote as (required for API key auth)'),
   },
   async (args) => {
     const data = await apiRequest(`/posts/${args.postId}/vote`, {
       method: 'POST',
+      body: JSON.stringify({ userId: args.userId }),
     });
     return {
       content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }],

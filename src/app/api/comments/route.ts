@@ -113,6 +113,21 @@ export async function POST(req: Request): Promise<NextResponse> {
       return NextResponse.json({ error: 'Post not found' }, { status: 404 });
     }
 
+    // Verify parent comment belongs to the same post
+    if (parentId) {
+      const parentComment = await db.comment.findUnique({
+        where: { id: parentId },
+        select: { postId: true },
+      });
+
+      if (!parentComment || parentComment.postId !== postId) {
+        return NextResponse.json(
+          { error: 'Parent comment not found on this post' },
+          { status: 400 }
+        );
+      }
+    }
+
     // If internal comment, verify user is a team member
     if (isInternal) {
       const membership = await db.organizationMember.findFirst({

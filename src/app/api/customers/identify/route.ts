@@ -60,6 +60,36 @@ export async function POST(req: Request): Promise<NextResponse> {
       },
     });
 
+    // If MRR may have changed, recalculate priority for all linked posts
+    if (mrr !== undefined) {
+      const linkedRequests = await db.customerRequest.findMany({
+        where: { customerId: customer.id },
+        select: { postId: true },
+      });
+
+      for (const req of linkedRequests) {
+        const aggregate = await db.customer.aggregate({
+          _sum: { mrr: true },
+          where: {
+            customerRequests: { some: { postId: req.postId } },
+          },
+        });
+
+        const totalMrr = aggregate._sum.mrr ?? 0;
+        const requestCount = await db.customerRequest.count({
+          where: { postId: req.postId },
+        });
+
+        await db.post.update({
+          where: { id: req.postId },
+          data: {
+            totalRequestingMrr: totalMrr,
+            priorityScore: totalMrr * Math.log(requestCount + 1),
+          },
+        });
+      }
+    }
+
     return NextResponse.json(customer);
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
