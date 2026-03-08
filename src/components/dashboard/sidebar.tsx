@@ -13,6 +13,8 @@ import {
   Settings,
   HelpCircle,
   ChevronDown,
+  MessageCircle,
+  DollarSign,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -27,6 +29,8 @@ const navigation = [
   { name: 'Boards', href: '/dashboard/boards', icon: MessageSquare },
   { name: 'Roadmap', href: '/dashboard/roadmap', icon: Map },
   { name: 'Changelog', href: '/dashboard/changelog', icon: Megaphone },
+  { name: 'Feedback', href: '/dashboard/feedback', icon: MessageCircle },
+  { name: 'Prioritization', href: '/dashboard/prioritization', icon: DollarSign },
   { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
   { name: 'Team', href: '/dashboard/team', icon: Users },
 ];

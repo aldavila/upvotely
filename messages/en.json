@@ -214,6 +214,64 @@
     "deleteOrg": "Delete Organization",
     "cancelSubscription": "Cancel Subscription"
   },
+  "conversationFeedback": {
+    "title": "Conversation Feedback",
+    "description": "Track satisfaction across customer conversations",
+    "satisfactionRate": "Satisfaction Rate",
+    "totalConversations": "Total Conversations",
+    "positiveRating": "Positive",
+    "negativeRating": "Negative",
+    "byAgent": "By Agent",
+    "negativeThemes": "Negative Feedback Themes",
+    "dailyTrend": "Daily Trend",
+    "empty": "No conversation feedback yet",
+    "emptyDescription": "Use the API to submit per-conversation feedback.",
+    "period": {
+      "7d": "Last 7 days",
+      "30d": "Last 30 days",
+      "90d": "Last 90 days"
+    }
+  },
+  "prioritization": {
+    "title": "Revenue Prioritization",
+    "description": "Feature requests sorted by requesting customer MRR",
+    "totalCustomers": "Total Customers",
+    "totalMrrTracked": "Total MRR Tracked",
+    "revenueLinkedPosts": "Revenue-Linked Posts",
+    "prioritizedRequests": "Prioritized Feature Requests",
+    "sortedByScore": "Sorted by priority score (MRR x customer count)",
+    "empty": "No posts yet. Use the Identify API to link customers to feature requests.",
+    "score": "Score",
+    "rank": "Rank"
+  },
+  "customers": {
+    "title": "Customers",
+    "identify": "Identify Customer",
+    "empty": "No customers yet",
+    "emptyDescription": "Use the Identify API to sync your customers and their revenue data.",
+    "name": "Name",
+    "email": "Email",
+    "company": "Company",
+    "mrr": "MRR",
+    "plan": "Plan",
+    "requests": "Requests",
+    "totalMrr": "Total Requesting MRR",
+    "search": "Search customers..."
+  },
+  "comments": {
+    "title": "Comments",
+    "empty": "No comments yet. Be the first to comment!",
+    "writeComment": "Write a comment...",
+    "writeReply": "Write a reply...",
+    "postComment": "Post Comment",
+    "postInternalNote": "Post Internal Note",
+    "reply": "Reply",
+    "internal": "Internal",
+    "internalNote": "Internal note",
+    "internalOnly": "Only visible to team members",
+    "showInternal": "Show internal notes",
+    "signInToComment": "Sign in to leave a comment."
+  },
   "errors": {
     "generic": "Something went wrong. Please try again.",
     "notFound": "Page not found",
