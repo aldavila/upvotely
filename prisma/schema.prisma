@@ -117,6 +117,7 @@ model Organization {
   apiKeys              ApiKey[]
   conversationFeedback ConversationFeedback[]
   customers            Customer[]
+  integrations         Integration[]
 
   @@map("organizations")
 }
@@ -514,3 +515,46 @@ model WebhookEvent {
   @@index([organizationId, status])
   @@map("webhook_events")
 }
+
+// ============================================
+// Integration Models
+// ============================================
+
+model Integration {
+  id             String   @id @default(cuid())
+  organizationId String
+  type           String   // slack, github, linear
+  config         Json
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  syncs        IntegrationSync[]
+
+  @@unique([organizationId, type])
+  @@index([organizationId])
+  @@map("integrations")
+}
+
+model IntegrationSync {
+  id            String   @id @default(cuid())
+  integrationId String
+  entityType    String   // post, status, comment
+  entityId      String
+  externalId    String
+  externalUrl   String?
+  direction     String   // inbound, outbound
+  status        String   @default("synced") // synced, failed, pending
+  metadata      Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  integration Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@unique([integrationId, entityType, entityId])
+  @@index([integrationId, entityType])
+  @@index([externalId])
+  @@map("integration_syncs")
+}
+
