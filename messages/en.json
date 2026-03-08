@@ -342,5 +342,46 @@
     "notFound": "Page not found",
     "unauthorized": "You don't have permission to access this.",
     "validation": "Please check your input and try again."
+  },
+  "webhooks": {
+    "title": "Webhooks",
+    "description": "Configure webhook notifications for your organization",
+    "url": "Webhook URL",
+    "urlDescription": "The URL to receive webhook events",
+    "secret": "Webhook Secret",
+    "secretDescription": "Used to verify webhook signatures",
+    "regenerateSecret": "Regenerate Secret",
+    "events": "Event Types",
+    "eventsDescription": "Select which events trigger webhooks",
+    "save": "Save Configuration",
+    "saved": "Webhook configuration saved",
+    "deliveryLog": "Delivery Log",
+    "deliveryLogDescription": "Recent webhook delivery attempts",
+    "status": "Status",
+    "event": "Event",
+    "attempts": "Attempts",
+    "response": "Response",
+    "timestamp": "Timestamp",
+    "retry": "Retry",
+    "retrySuccess": "Webhook retry scheduled",
+    "noEvents": "No webhook events yet",
+    "eventTypes": {
+      "post.created": "Post Created",
+      "post.updated": "Post Updated",
+      "post.status_changed": "Post Status Changed",
+      "vote.created": "Vote Created",
+      "vote.removed": "Vote Removed",
+      "comment.created": "Comment Created",
+      "conversation.feedback.created": "Conversation Feedback Created",
+      "conversation.feedback.negative": "Negative Conversation Feedback",
+      "post.trending": "Post Trending",
+      "post.ai_categorized": "Post AI Categorized",
+      "insight.weekly_summary": "Weekly Summary Insight"
+    },
+    "statusLabels": {
+      "pending": "Pending",
+      "sent": "Sent",
+      "failed": "Failed"
+    }
   }
 }
