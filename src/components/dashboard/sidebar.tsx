@@ -10,6 +10,7 @@ import {
   Megaphone,
   BarChart3,
   Users,
+  MessageCircle,
   Settings,
   HelpCircle,
   ChevronDown,
@@ -28,6 +29,7 @@ const navigation = [
   { name: 'Roadmap', href: '/dashboard/roadmap', icon: Map },
   { name: 'Changelog', href: '/dashboard/changelog', icon: Megaphone },
   { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
+  { name: 'Feedback', href: '/dashboard/feedback', icon: MessageCircle },
   { name: 'Team', href: '/dashboard/team', icon: Users },
 ];
 
