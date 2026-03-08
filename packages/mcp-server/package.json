@@ -1,0 +1,22 @@
+{
+  "name": "@upvotely/mcp-server",
+  "version": "0.1.0",
+  "description": "MCP server for Upvotely — expose feedback boards, posts, and voting to AI agents",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "upvotely-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.9.3"
+  }
+}
