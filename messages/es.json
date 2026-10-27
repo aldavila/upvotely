@@ -343,6 +343,17 @@
     "unauthorized": "No tienes permiso para acceder a esto.",
     "validation": "Por favor revisa tu entrada e intenta de nuevo."
   },
+  "voterNotifications": {
+    "statusUpdate": "Actualización de Estado",
+    "statusChanged": "Tu solicitud \"{title}\" ahora está {status}",
+    "subscribed": "Suscrito a actualizaciones",
+    "unsubscribed": "Desuscrito de actualizaciones",
+    "subscribe": "Suscribirse",
+    "unsubscribe": "Desuscribirse",
+    "unsubscribeSuccess": "Te has desuscrito de las actualizaciones de este post",
+    "notifyVoters": "Notificar a los votantes de este cambio",
+    "votersNotified": "{count} votantes han sido notificados"
+  },
   "integrations": {
     "title": "Integraciones",
     "description": "Conecta tus herramientas con Upvotely",

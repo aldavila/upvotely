@@ -3,36 +3,38 @@
     "target": "ES2022",
     "module": "CommonJS",
     "moduleResolution": "Node",
+    "esModuleInterop": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "rootDir": ".",
+    "outDir": ".test-dist",
+    "types": [
+      "node"
+    ],
     "lib": [
       "ES2022",
       "DOM"
     ],
-    "types": [
-      "node"
-    ],
-    "esModuleInterop": true,
-    "strict": true,
-    "skipLibCheck": true,
     "jsx": "react-jsx",
     "paths": {
       "@/*": [
         "./src/*"
       ]
-    },
-    "rootDir": ".",
-    "outDir": ".test-dist"
+    }
   },
   "include": [
-    "src/lib/linear-*.ts",
-    "src/lib/integrations/linear.ts",
-    "src/app/api/integrations/linear/**/*.ts",
-    "src/app/(dashboard)/dashboard/settings/integrations/linear/page.tsx",
+    "src/lib/status-notification-policy.ts",
+    "src/lib/unsubscribe-token.ts",
     "tests/**/*.ts",
     "src/lib/slack-security.ts",
     "src/lib/github-security.ts",
     "src/lib/integrations/github.ts",
     "src/app/api/integrations/github/**/*.ts",
     "src/app/(dashboard)/dashboard/settings/integrations/github/page.tsx",
-    "tests/github.test.ts"
+    "tests/github.test.ts",
+    "src/lib/linear-*.ts",
+    "src/lib/integrations/linear.ts",
+    "src/app/api/integrations/linear/**/*.ts",
+    "src/app/(dashboard)/dashboard/settings/integrations/linear/page.tsx"
   ]
 }
