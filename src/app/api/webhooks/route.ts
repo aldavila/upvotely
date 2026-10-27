@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { z } from 'zod';
 import { generateWebhookSecret } from '@/lib/webhooks';
+import { validateWebhookUrl } from '@/lib/webhook-policy';
+import { resolveWebhookHost } from '@/lib/webhook-request';
 
 const webhookConfigSchema = z.object({
   webhookUrl: z.string().url().optional().or(z.literal('')),
@@ -53,10 +55,24 @@ export async function PUT(req: Request): Promise<NextResponse> {
       return NextResponse.json({ error: 'Invalid input', details: parseResult.error.issues }, { status: 400 });
     }
 
+    if (parseResult.data.webhookUrl) {
+      try {
+        await validateWebhookUrl(parseResult.data.webhookUrl, resolveWebhookHost);
+      } catch {
+        return NextResponse.json({ error: 'Webhook URL must use HTTPS and a public destination' }, { status: 400 });
+      }
+    }
+
+    const current = await db.organization.findUnique({
+      where: { id: membership.organizationId },
+      select: { webhookSecret: true },
+    });
+    const secret = parseResult.data.regenerateSecret || (parseResult.data.webhookUrl && !current?.webhookSecret)
+      ? generateWebhookSecret() : undefined;
     const updateData: Record<string, unknown> = {};
     if (parseResult.data.webhookUrl !== undefined) updateData.webhookUrl = parseResult.data.webhookUrl || null;
     if (parseResult.data.webhookEvents !== undefined) updateData.webhookEvents = parseResult.data.webhookEvents;
-    if (parseResult.data.regenerateSecret) updateData.webhookSecret = generateWebhookSecret();
+    if (secret) updateData.webhookSecret = secret;
 
     const org = await db.organization.update({
       where: { id: membership.organizationId },
@@ -69,7 +85,8 @@ export async function PUT(req: Request): Promise<NextResponse> {
       webhookEvents: org.webhookEvents,
       hasSecret: !!org.webhookSecret,
       secretPreview: org.webhookSecret ? `${org.webhookSecret.slice(0, 10)}...` : null,
-    });
+      ...(secret ? { secret } : {}),
+    }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('Update webhook config error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

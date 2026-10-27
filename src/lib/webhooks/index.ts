@@ -1,24 +1,10 @@
 import { db } from '@/lib/db';
 import crypto from 'crypto';
+import type { Prisma } from '@prisma/client';
+import type { WebhookEventType, WebhookPayload } from '../webhook-payload';
+import { requestWebhook } from '../webhook-request';
 
-export type WebhookEventType =
-  | 'post.created'
-  | 'post.updated'
-  | 'post.status_changed'
-  | 'vote.created'
-  | 'vote.removed'
-  | 'comment.created'
-  | 'conversation.feedback.created'
-  | 'conversation.feedback.negative'
-  | 'post.trending'
-  | 'post.ai_categorized'
-  | 'insight.weekly_summary';
-
-interface WebhookPayload {
-  event: WebhookEventType;
-  timestamp: string;
-  data: Record<string, unknown>;
-}
+export type { WebhookEventType } from '../webhook-payload';
 
 export async function triggerWebhook(
   organizationId: string,
@@ -43,7 +29,7 @@ export async function triggerWebhook(
     data: {
       organizationId,
       event,
-      payload: payload as unknown as Record<string, unknown>,
+      payload: JSON.parse(JSON.stringify(payload)) as Prisma.InputJsonValue,
       status: 'pending',
     },
   });
@@ -76,14 +62,11 @@ export async function deliverWithRetry(
         headers['X-Webhook-Signature'] = `sha256=${signature}`;
       }
 
-      const response = await fetch(url, {
-        method: 'POST',
+      const response = await requestWebhook(url, {
         headers,
         body,
-        signal: AbortSignal.timeout(10000),
+        redirect: 'manual',
       });
-
-      const responseText = await response.text().catch(() => '');
 
       if (response.ok) {
         await db.webhookEvent.update({
@@ -92,7 +75,7 @@ export async function deliverWithRetry(
             status: 'sent',
             attempts: attempt,
             lastAttemptAt: new Date(),
-            response: `${response.status}: ${responseText.slice(0, 500)}`,
+            response: String(response.status),
           },
         });
         return;
@@ -103,16 +86,16 @@ export async function deliverWithRetry(
         data: {
           attempts: attempt,
           lastAttemptAt: new Date(),
-          response: `${response.status}: ${responseText.slice(0, 500)}`,
+          response: String(response.status),
         },
       });
-    } catch (error) {
+    } catch {
       await db.webhookEvent.update({
         where: { id: eventId },
         data: {
           attempts: attempt,
           lastAttemptAt: new Date(),
-          response: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          response: 'Webhook delivery failed',
         },
       });
     }

@@ -37,6 +37,7 @@ export default function WebhooksSettingsPage() {
   const [webhookEvents, setWebhookEvents] = useState<string[]>([]);
   const [hasSecret, setHasSecret] = useState(false);
   const [secretPreview, setSecretPreview] = useState<string | null>(null);
+  const [secret, setSecret] = useState<string | null>(null);
   const [showSecret, setShowSecret] = useState(false);
   const [events, setEvents] = useState<WebhookEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,6 +69,8 @@ export default function WebhooksSettingsPage() {
         const data = await res.json();
         setHasSecret(data.hasSecret);
         setSecretPreview(data.secretPreview);
+        setSecret(data.secret || null);
+        setShowSecret(!!data.secret);
       }
     } finally {
       setSaving(false);
@@ -84,6 +87,8 @@ export default function WebhooksSettingsPage() {
       const data = await res.json();
       setHasSecret(data.hasSecret);
       setSecretPreview(data.secretPreview);
+      setSecret(data.secret || null);
+      setShowSecret(!!data.secret);
     }
   };
 
@@ -149,14 +154,20 @@ export default function WebhooksSettingsPage() {
               <Label className="text-sm font-medium">Webhook Secret</Label>
               <div className="mt-1 flex items-center gap-2">
                 <Input
-                  value={showSecret && secretPreview ? secretPreview : hasSecret ? '••••••••••••••••' : 'No secret configured'}
+                  value={showSecret ? secret || secretPreview || 'No secret configured' : hasSecret ? '••••••••••••••••' : 'No secret configured'}
                   readOnly
                   className="font-mono text-sm"
                 />
                 <Button variant="outline" size="icon" onClick={() => setShowSecret(!showSecret)}>
                   {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
+                {secret && (
+                  <Button variant="outline" size="icon" aria-label="Copy webhook secret" onClick={() => navigator.clipboard.writeText(secret)}>
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
+              {secret && <p className="mt-2 text-sm text-muted-foreground">Copy this secret now. It will not be shown again after you leave this page.</p>}
             </div>
             <Button variant="outline" className="mt-6" onClick={handleRegenerateSecret}>
               <RefreshCw className="mr-2 h-4 w-4" />
