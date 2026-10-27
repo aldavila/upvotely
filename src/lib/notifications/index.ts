@@ -26,7 +26,7 @@ function toPrefKey(type: NotificationType, prefix: 'inApp' | 'email'): string {
   return map[type];
 }
 
-export async function createNotification(params: CreateNotificationParams) {
+export async function createNotification(params: CreateNotificationParams, options: { skipEmail?: boolean } = {}) {
   const prefs = await db.notificationPreference.findUnique({
     where: { userId_organizationId: { userId: params.userId, organizationId: params.organizationId } },
   });
@@ -35,7 +35,7 @@ export async function createNotification(params: CreateNotificationParams) {
   const emailKey = toPrefKey(params.type, 'email');
 
   const shouldInApp = !prefs || (prefs as Record<string, unknown>)[inAppKey] !== false;
-  const shouldEmail = (!prefs || (prefs as Record<string, unknown>)[emailKey] !== false)
+  const shouldEmail = !options.skipEmail && (!prefs || (prefs as Record<string, unknown>)[emailKey] !== false)
     && effectiveEmailFrequency(prefs?.emailDigest) === 'instant';
 
   if (shouldInApp) {
@@ -61,9 +61,10 @@ export async function createBulkNotifications(
   title: string,
   message: string,
   link?: string,
-  metadata?: Prisma.InputJsonValue
+  metadata?: Prisma.InputJsonValue,
+  options: { skipEmail?: boolean } = {},
 ) {
   for (const userId of userIds) {
-    await createNotification({ userId, organizationId, type, title, message, link, metadata });
+    await createNotification({ userId, organizationId, type, title, message, link, metadata }, options);
   }
 }

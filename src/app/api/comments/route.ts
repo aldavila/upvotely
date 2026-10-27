@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { createCommentSchema } from '@/lib/validators';
 import { z } from 'zod';
-import { notifyNewComment } from '@/lib/notifications/events';
+import { notifyMentions, notifyNewComment } from '@/lib/notifications/events';
 
 const getCommentsQuerySchema = z.object({
   postId: z.string().cuid(),
@@ -161,7 +161,9 @@ export async function POST(req: Request): Promise<NextResponse> {
       },
     });
 
-    await notifyNewComment(post, comment, post.board.organizationId).catch(console.error);
+    await notifyMentions(post, comment, post.board.organizationId)
+      .then(mentionedUserIds => notifyNewComment(post, comment, post.board.organizationId, mentionedUserIds))
+      .catch(console.error);
 
     return NextResponse.json(comment, { status: 201 });
   } catch (error) {

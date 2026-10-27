@@ -1,7 +1,7 @@
 import { db } from '@/lib/db';
 import { createBulkNotifications, createNotification } from './index';
 
-export async function notifyNewPost(post: { id: string; title: string }, organizationId: string, actorId?: string | null) {
+export async function notifyNewPost(post: { id: string; title: string; authorId: string | null; isAnonymous?: boolean }, organizationId: string, actorId?: string | null) {
   const members = await db.organizationMember.findMany({
     where: { organizationId },
     select: { userId: true },
@@ -10,6 +10,8 @@ export async function notifyNewPost(post: { id: string; title: string }, organiz
     members.map(member => member.userId).filter(userId => userId !== actorId),
     organizationId, 'new_post', 'New feedback', post.title,
     '/dashboard/boards', { postId: post.id },
+    // Anonymous submissions (including widgets) cannot trigger instant email fan-out.
+    { skipEmail: post.isAnonymous || !post.authorId },
   );
 }
 
@@ -17,8 +19,10 @@ export async function notifyNewComment(
   post: { id: string; title: string; authorId: string | null },
   comment: { id: string; authorId: string; content: string; isInternal: boolean },
   organizationId: string,
+  mentionedUserIds: string[] = [],
 ) {
-  if (!post.authorId || post.authorId === comment.authorId) return;
+  // A mentioned post author receives only the mention for this comment.
+  if (!post.authorId || post.authorId === comment.authorId || mentionedUserIds.includes(post.authorId)) return;
   // Internal comment content must only reach members of this post's organization.
   if (comment.isInternal) {
     const membership = await db.organizationMember.findFirst({
@@ -31,4 +35,52 @@ export async function notifyNewComment(
     title: `New comment on ${post.title}`, message: comment.content,
     link: '/dashboard/boards', metadata: { postId: post.id, commentId: comment.id },
   });
+}
+
+export async function notifyStatusChange(
+  post: { id: string; title: string; authorId: string | null },
+  oldStatus: { id: string; name: string },
+  newStatus: { id: string; name: string },
+  organizationId: string,
+  actorId: string,
+) {
+  if (oldStatus.id === newStatus.id) return;
+  // Vote.userId and Post.authorId reference real User accounts, not widget visitors/customers.
+  const votes = await db.vote.findMany({ where: { postId: post.id }, select: { userId: true } });
+  const recipients = [...new Set([post.authorId, ...votes.map(vote => vote.userId)])]
+    .filter((userId): userId is string => !!userId && userId !== actorId);
+  await createBulkNotifications(
+    recipients, organizationId, 'status_change', `Status changed on ${post.title}`,
+    `${oldStatus.name} → ${newStatus.name}`, '/dashboard/boards',
+    { postId: post.id, oldStatusId: oldStatus.id, newStatusId: newStatus.id },
+  );
+}
+
+export async function notifyMentions(
+  post: { id: string; title: string },
+  comment: { id: string; authorId: string; content: string; isInternal: boolean },
+  organizationId: string,
+) {
+  // Match @email-local-part or @exact-single-token-name, case-insensitively.
+  // Tokens contain ASCII letters/digits/underscores, optionally separated by . + or -.
+  const mentions = new Set(Array.from(
+    comment.content.matchAll(/(?:^|[^\w@])@([a-z0-9_]+(?:[.+-][a-z0-9_]+)*)(?![\w@])/gi),
+    match => match[1].toLowerCase(),
+  ));
+  if (!mentions.size) return [];
+  // Resolve through membership for public AND internal comments; outsiders never receive mentions.
+  const members = await db.organizationMember.findMany({
+    where: { organizationId },
+    select: { userId: true, user: { select: { name: true, email: true } } },
+    orderBy: { userId: 'asc' },
+  });
+  const recipients = [...new Set(members.filter(member => member.userId !== comment.authorId && (
+    mentions.has(member.user.email.split('@')[0].toLowerCase()) ||
+    (member.user.name && mentions.has(member.user.name.toLowerCase()))
+  )).map(member => member.userId))].slice(0, 10);
+  await createBulkNotifications(
+    recipients, organizationId, 'mention', `You were mentioned on ${post.title}`,
+    comment.content, '/dashboard/boards', { postId: post.id, commentId: comment.id },
+  );
+  return recipients;
 }
