@@ -525,6 +525,10 @@ model Integration {
   organizationId String
   type           String   // slack, github, linear
   config         Json
+  // Populated only by a signed Slack command confirming an admin's one-time code.
+  slackTeamId                String?   @unique
+  slackConnectionCodeHash    String?   @unique
+  slackConnectionExpiresAt   DateTime?
   isActive       Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt

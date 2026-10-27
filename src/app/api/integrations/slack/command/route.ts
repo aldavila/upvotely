@@ -1,22 +1,56 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { hashSlackConnectionCode, verifySlackRequest } from '@/lib/slack-security';
+import { notifyPostCreated } from '@/lib/integrations/slack';
 
 export async function POST(req: Request): Promise<NextResponse> {
   try {
-    const formData = await req.formData();
-    const text = formData.get('text') as string;
-    const teamId = formData.get('team_id') as string;
-    const userName = formData.get('user_name') as string;
-    const command = formData.get('command') as string;
+    const rawBody = await req.text();
+    if (!verifySlackRequest(rawBody, req.headers.get('X-Slack-Request-Timestamp'),
+      req.headers.get('X-Slack-Signature'), process.env.SLACK_SIGNING_SECRET)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const formData = new URLSearchParams(rawBody);
+    const text = formData.get('text') || '';
+    const teamId = formData.get('team_id');
+    const userName = formData.get('user_name') || 'Anonymous';
+    const command = formData.get('command');
+    if (!teamId || !/^T[A-Z0-9]+$/.test(teamId) || command !== '/upvotely') {
+      return NextResponse.json({ error: 'Invalid command' }, { status: 400 });
+    }
 
-    const integration = await db.integration.findFirst({
+    const connection = /^connect ([a-f0-9]{64})$/.exec(text.trim());
+    if (connection) {
+      const codeHash = hashSlackConnectionCode(connection[1]);
+      // An atomic, single-use claim; the unique workspace column also prevents
+      // concurrent claims by different organizations.
+      const result = await db.integration.updateMany({
+        where: {
+          type: 'slack', isActive: true, slackTeamId: null,
+          slackConnectionCodeHash: codeHash,
+          slackConnectionExpiresAt: { gt: new Date() },
+        },
+        data: { slackTeamId: teamId, slackConnectionCodeHash: null, slackConnectionExpiresAt: null },
+      });
+      return NextResponse.json({
+        response_type: 'ephemeral',
+        text: result.count === 1 ? 'Slack workspace connected.' : 'Invalid or expired connection code. Save the integration settings to get a new code.',
+      }, { status: result.count === 1 ? 200 : 400 });
+    }
+
+    const integrations = await db.integration.findMany({
       where: {
         type: 'slack',
         isActive: true,
-        config: { path: ['teamId'], equals: teamId },
+        slackTeamId: teamId,
       },
+      take: 2,
       include: { organization: { include: { boards: true, statuses: true } } },
     });
+    if (integrations.length > 1) {
+      return NextResponse.json({ error: 'Ambiguous workspace mapping' }, { status: 409 });
+    }
+    const integration = integrations[0];
 
     if (!integration) {
       return NextResponse.json({
@@ -32,9 +66,9 @@ export async function POST(req: Request): Promise<NextResponse> {
       });
     }
 
-    const parts = text.split('|').map((p: string) => p.trim());
-    const title = parts[0];
-    const content = parts[1] || title;
+    const separator = text.indexOf('|');
+    const title = (separator < 0 ? text : text.slice(0, separator)).trim();
+    const content = (separator < 0 ? '' : text.slice(separator + 1)).trim() || title;
 
     const org = integration.organization;
     const board = org.boards[0];
@@ -74,12 +108,19 @@ export async function POST(req: Request): Promise<NextResponse> {
       },
     });
 
+    await notifyPostCreated(integration.organizationId, {
+      title, content, boardName: board.name, authorName: userName,
+      organizationSlug: org.slug, boardSlug: board.slug,
+    });
+
     return NextResponse.json({
       response_type: 'in_channel',
       text: `Feedback created: *${title}*\nSubmitted by ${userName} via Slack`,
     });
   } catch (error) {
-    console.error('Slack command error:', error);
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
+      return NextResponse.json({ error: 'Workspace is already connected' }, { status: 409 });
+    }
     return NextResponse.json({
       response_type: 'ephemeral',
       text: 'Something went wrong. Please try again.',

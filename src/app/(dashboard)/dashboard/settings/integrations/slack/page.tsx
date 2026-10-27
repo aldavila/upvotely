@@ -12,7 +12,6 @@ import { MessageSquare, Loader2 } from 'lucide-react';
 interface SlackConfig {
   webhookUrl: string;
   channel: string;
-  teamId: string;
   notifyOnNewPost: boolean;
   notifyOnStatusChange: boolean;
   notifyOnVoteMilestone: boolean;
@@ -23,7 +22,6 @@ export default function SlackIntegrationPage() {
   const [config, setConfig] = useState<SlackConfig>({
     webhookUrl: '',
     channel: '',
-    teamId: '',
     notifyOnNewPost: true,
     notifyOnStatusChange: true,
     notifyOnVoteMilestone: true,
@@ -32,6 +30,9 @@ export default function SlackIntegrationPage() {
   const [isConnected, setIsConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+  const [connectionCode, setConnectionCode] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetch('/api/integrations/slack')
@@ -40,6 +41,7 @@ export default function SlackIntegrationPage() {
         if (data.integration) {
           setConfig(data.integration.config as SlackConfig);
           setIsConnected(data.integration.isActive);
+          setWorkspaceId(data.integration.slackTeamId);
         }
       })
       .finally(() => setLoading(false));
@@ -47,22 +49,37 @@ export default function SlackIntegrationPage() {
 
   const handleSave = async () => {
     setSaving(true);
+    setError('');
     try {
       const res = await fetch('/api/integrations/slack', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config),
       });
-      if (res.ok) setIsConnected(true);
+      if (!res.ok) throw new Error('Save failed');
+      const data = await res.json();
+      setIsConnected(true);
+      setWorkspaceId(data.integration.slackTeamId);
+      setConnectionCode(data.connectionCode || '');
+    } catch {
+      setError('Could not save the integration. Check the webhook URL and try again.');
     } finally {
       setSaving(false);
     }
   };
 
   const handleDisconnect = async () => {
-    await fetch('/api/integrations/slack', { method: 'DELETE' });
-    setIsConnected(false);
-    setConfig({ webhookUrl: '', channel: '', teamId: '', notifyOnNewPost: true, notifyOnStatusChange: true, notifyOnVoteMilestone: true, voteMilestones: [10, 25, 50, 100] });
+    setError('');
+    try {
+      const res = await fetch('/api/integrations/slack', { method: 'DELETE' });
+      if (!res.ok) throw new Error('Disconnect failed');
+      setIsConnected(false);
+      setWorkspaceId(null);
+      setConnectionCode('');
+      setConfig({ webhookUrl: '', channel: '', notifyOnNewPost: true, notifyOnStatusChange: true, notifyOnVoteMilestone: true, voteMilestones: [10, 25, 50, 100] });
+    } catch {
+      setError('Could not disconnect. Please try again.');
+    }
   };
 
   if (loading) {
@@ -118,13 +135,13 @@ export default function SlackIntegrationPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="teamId">Team ID (for slash commands)</Label>
-            <Input
-              id="teamId"
-              placeholder="T0123456789"
-              value={config.teamId}
-              onChange={(e) => setConfig({ ...config, teamId: e.target.value })}
-            />
+            <Label>Slash command workspace</Label>
+            {workspaceId ? <p className="text-sm">Verified workspace: {workspaceId}</p> : (
+              <>
+                <p className="text-sm">Save the configuration, then run this command in your Slack workspace within 10 minutes. Keep the code private.</p>
+                {connectionCode && <code className="block break-all text-sm">/upvotely connect {connectionCode}</code>}
+              </>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -168,6 +185,7 @@ export default function SlackIntegrationPage() {
         </CardContent>
       </Card>
 
+      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       <div className="flex gap-3">
         <Button onClick={handleSave} disabled={saving || !config.webhookUrl}>
           {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}

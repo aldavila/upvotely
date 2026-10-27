@@ -1,4 +1,5 @@
 import { db } from '@/lib/db';
+import { isSlackWebhookUrl } from '../slack-security';
 
 interface SlackMessage {
   text: string;
@@ -8,20 +9,24 @@ interface SlackMessage {
 
 export async function sendSlackNotification(
   organizationId: string,
-  message: SlackMessage
+  message: SlackMessage,
+  preference?: 'notifyOnNewPost' | 'notifyOnStatusChange' | 'notifyOnVoteMilestone'
 ): Promise<boolean> {
-  const integration = await db.integration.findUnique({
-    where: { organizationId_type: { organizationId, type: 'slack' } },
-  });
-
-  if (!integration?.isActive) return false;
-
-  const config = integration.config as { webhookUrl: string; channel?: string };
-  if (!config.webhookUrl) return false;
-
   try {
+    const integration = await db.integration.findUnique({
+      where: { organizationId_type: { organizationId, type: 'slack' } },
+    });
+
+    if (!integration?.isActive) return false;
+
+    const config = integration.config;
+    if (!config || typeof config !== 'object' || Array.isArray(config)) return false;
+    if (!isSlackWebhookUrl(config.webhookUrl) || (preference && config[preference] === false)) return false;
+
     const response = await fetch(config.webhookUrl, {
       method: 'POST',
+      redirect: 'manual',
+      signal: AbortSignal.timeout(5000),
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...message,
@@ -32,6 +37,18 @@ export async function sendSlackNotification(
   } catch {
     return false;
   }
+}
+
+export async function notifyPostCreated(organizationId: string, post: {
+  title: string;
+  content: string;
+  boardName: string;
+  authorName: string | null;
+  organizationSlug: string;
+  boardSlug: string;
+}): Promise<boolean> {
+  const url = `${(process.env.NEXTAUTH_URL || '').replace(/\/$/, '')}/${encodeURIComponent(post.organizationSlug)}/${encodeURIComponent(post.boardSlug)}`;
+  return sendSlackNotification(organizationId, buildPostCreatedMessage({ ...post, url }), 'notifyOnNewPost');
 }
 
 export function buildPostCreatedMessage(post: {

@@ -2,11 +2,14 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { z } from 'zod';
+import { randomBytes } from 'node:crypto';
+import { hashSlackConnectionCode, isSlackWebhookUrl } from '@/lib/slack-security';
+
+const publicIntegrationSelect = { config: true, isActive: true, slackTeamId: true };
 
 const slackConfigSchema = z.object({
-  webhookUrl: z.string().url(),
+  webhookUrl: z.string().refine(isSlackWebhookUrl, 'Use an HTTPS hooks.slack.com URL'),
   channel: z.string().optional(),
-  teamId: z.string().optional(),
   notifyOnNewPost: z.boolean().default(true),
   notifyOnStatusChange: z.boolean().default(true),
   notifyOnVoteMilestone: z.boolean().default(true),
@@ -30,6 +33,7 @@ export async function GET(): Promise<NextResponse> {
 
     const integration = await db.integration.findUnique({
       where: { organizationId_type: { organizationId: membership.organizationId, type: 'slack' } },
+      select: publicIntegrationSelect,
     });
 
     return NextResponse.json({ integration });
@@ -63,23 +67,31 @@ export async function POST(req: Request): Promise<NextResponse> {
       );
     }
 
+    const connectionCode = randomBytes(32).toString('hex');
+    const connection = {
+      slackConnectionCodeHash: hashSlackConnectionCode(connectionCode),
+      slackConnectionExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
+    };
     const integration = await db.integration.upsert({
       where: { organizationId_type: { organizationId: membership.organizationId, type: 'slack' } },
+      select: publicIntegrationSelect,
       create: {
+        ...connection,
         organizationId: membership.organizationId,
         type: 'slack',
         config: parseResult.data,
         isActive: true,
       },
       update: {
+        ...connection,
         config: parseResult.data,
         isActive: true,
       },
     });
 
-    return NextResponse.json({ integration }, { status: 201 });
+    return NextResponse.json({ integration, connectionCode: integration.slackTeamId ? undefined : connectionCode }, { status: 201 });
   } catch (error) {
-    console.error('Save Slack integration error:', error);
+    // Database errors can contain the webhook URL or connection hash.
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
