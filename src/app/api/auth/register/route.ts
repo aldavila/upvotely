@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { db } from '@/lib/db';
+import { publicUserSelect } from '@/lib/public-payloads';
 import { signUpSchema } from '@/lib/validators';
 import { z } from 'zod';
 
@@ -15,6 +16,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     // Check if user already exists
     const existingUser = await db.user.findUnique({
       where: { email: normalizedEmail },
+      select: { id: true },
     });
 
     if (existingUser) {
@@ -34,15 +36,12 @@ export async function POST(req: Request): Promise<NextResponse> {
         email: normalizedEmail,
         password: hashedPassword,
       },
+      select: publicUserSelect,
     });
 
     return NextResponse.json({
       message: 'User created successfully',
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-      },
+      user,
     });
   } catch (error) {
     // Log error without exposing to client

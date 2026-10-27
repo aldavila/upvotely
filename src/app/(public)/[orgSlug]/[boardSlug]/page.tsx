@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { db } from '@/lib/db';
+import { publicBoardSelect, publicPostSelect, publicStatusSelect } from '@/lib/public-payloads';
 import { auth } from '@/lib/auth';
 import { PublicBoardView } from '@/components/boards/public-board-view';
 import type { Metadata } from 'next';
@@ -20,6 +21,7 @@ interface PageProps {
 async function getBoard(orgSlug: string, boardSlug: string) {
   const organization = await db.organization.findUnique({
     where: { slug: orgSlug },
+    select: { id: true },
   });
 
   if (!organization) return null;
@@ -30,18 +32,18 @@ async function getBoard(orgSlug: string, boardSlug: string) {
         organizationId: organization.id,
         slug: boardSlug,
       },
+      isPublic: true,
+      isArchived: false,
     },
-    include: {
-      organization: true,
-      tags: true,
-    },
+    select: publicBoardSelect,
   });
 
-  if (!board || !board.isPublic || board.isArchived) return null;
+  if (!board) return null;
 
   // Get statuses for filtering
   const statuses = await db.status.findMany({
     where: { organizationId: organization.id },
+    select: publicStatusSelect,
     orderBy: { position: 'asc' },
   });
 
@@ -112,16 +114,7 @@ export default async function PublicBoardPage({ params, searchParams }: PageProp
 
   const posts = await db.post.findMany({
     where,
-    include: {
-      author: {
-        select: { id: true, name: true, image: true },
-      },
-      status: true,
-      tags: true,
-      _count: {
-        select: { votes: true, comments: true },
-      },
-    },
+    select: publicPostSelect,
     orderBy,
     take: 50,
   });
@@ -145,7 +138,11 @@ export default async function PublicBoardPage({ params, searchParams }: PageProp
       posts={posts}
       statuses={statuses}
       userVotes={userVotes}
-      user={session?.user}
+      user={session?.user?.id ? {
+        id: session.user.id,
+        name: session.user.name ?? null,
+        image: session.user.image ?? null,
+      } : null}
       currentStatus={status}
       currentSort={sort}
       searchQuery={q}
