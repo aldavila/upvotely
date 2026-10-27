@@ -34,11 +34,12 @@ export async function POST(req: Request): Promise<NextResponse> {
     if (boardId) {
       board = await db.board.findUnique({
         where: { id: boardId },
-        include: { organization: true },
+        select: { id: true, organizationId: true, isPublic: true, requireApproval: true },
       });
     } else if (organizationSlug && boardSlug) {
       const organization = await db.organization.findUnique({
         where: { slug: organizationSlug },
+        select: { id: true },
       });
 
       if (organization) {
@@ -49,7 +50,7 @@ export async function POST(req: Request): Promise<NextResponse> {
               slug: boardSlug,
             },
           },
-          include: { organization: true },
+          select: { id: true, organizationId: true, isPublic: true, requireApproval: true },
         });
       }
     }
@@ -68,6 +69,7 @@ export async function POST(req: Request): Promise<NextResponse> {
         organizationId: board.organizationId,
         isDefault: true,
       },
+      select: { id: true },
     });
 
     if (!defaultStatus) {
@@ -87,6 +89,7 @@ export async function POST(req: Request): Promise<NextResponse> {
         isAnonymous: true,
         isApproved: !board.requireApproval,
       },
+      select: { id: true, isApproved: true },
     });
 
     return NextResponse.json({
