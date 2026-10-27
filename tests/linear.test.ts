@@ -6,6 +6,7 @@ import { loadSource } from './load-source';
 const secret = randomBytes(32).toString('hex');
 const webhookFile = 'src/app/api/integrations/linear/webhook/route.ts';
 const issueFile = 'src/app/api/integrations/linear/issues/route.ts';
+const configFile = 'src/app/api/integrations/linear/route.ts';
 const helperFile = 'src/lib/integrations/linear.ts';
 const postId = 'c1234567890123456789012345';
 const payload = (timestamp = Date.now()) => ({
@@ -24,10 +25,17 @@ function webhook(db: unknown, signingSecret: string | undefined = secret) {
 }
 
 for (const variant of ['missing', 'invalid', 'short', 'non-hex', 'tampered', 'stale', 'future', 'no timestamp', 'no secret']) {
-  test(`webhook rejects ${variant} authentication before any DB access`, async () => {
+  test(`webhook rejects ${variant} authentication before any sync or post access`, async () => {
     let reads = 0;
-    const db = new Proxy({}, { get() { reads++; throw new Error('DB must not be accessed'); } });
-    const event: Record<string, unknown> = payload(variant === 'stale' ? Date.now() - 301_000 : variant === 'future' ? Date.now() + 301_000 : Date.now());
+    const candidate = sync('candidate', 'immutable-a', 'team-a');
+    if (variant === 'no secret') delete candidate.integration.config.webhookSecret;
+    const db = new Proxy({ integration: { findMany: async () => [candidate.integration] } }, {
+      get(target, key) {
+        if (key === 'integration') return target.integration;
+        reads++; throw new Error('Sync and posts must not be accessed');
+      },
+    });
+    const event: Record<string, unknown> = payload(variant === 'stale' ? Date.now() - 61_000 : variant === 'future' ? Date.now() + 61_000 : Date.now());
     if (variant === 'no timestamp') delete event.webhookTimestamp;
     let body = JSON.stringify(event);
     let signature: string | null = createHmac('sha256', secret).update(body).digest('hex');
@@ -36,16 +44,16 @@ for (const variant of ['missing', 'invalid', 'short', 'non-hex', 'tampered', 'st
     if (variant === 'short') signature = '00';
     if (variant === 'non-hex') signature = 'z'.repeat(64);
     if (variant === 'tampered') body += ' ';
-    const response = await webhook(db, variant === 'no secret' ? '' : secret)(webhookRequest(body, signature));
+    const response = await webhook(db)(webhookRequest(body, signature));
     assert.equal(response.status, 401);
     assert.equal(reads, 0);
   });
 }
 
-type Row = { id: string; externalId: string; entityId: string; entityType: string; metadata: { linearIssueId: string }; integration: { id: string; type: string; isActive: boolean; organizationId: string; config: { teamId: string }; organization: { statuses: { id: string; type: string }[] } } };
+type Row = { integrationId: string; id: string; externalId: string; entityId: string; entityType: string; metadata: { linearIssueId: string }; integration: { id: string; type: string; isActive: boolean; organizationId: string; config: { teamId: string; webhookSecret?: string }; organization: { statuses: { id: string; type: string }[] } } };
 function sync(id: string, issueId: string, teamId: string, organizationId = id): Row {
-  return { id, externalId: 'TEAM-1', entityId: `post-${id}`, entityType: 'post', metadata: { linearIssueId: issueId },
-    integration: { id: `integration-${id}`, type: 'linear', isActive: true, organizationId, config: { teamId }, organization: { statuses: [{ id: `complete-${id}`, type: 'complete' }] } } };
+  return { integrationId: `integration-${id}`, id, externalId: 'TEAM-1', entityId: `post-${id}`, entityType: 'post', metadata: { linearIssueId: issueId },
+    integration: { id: `integration-${id}`, type: 'linear', isActive: true, organizationId, config: { teamId, webhookSecret: secret }, organization: { statuses: [{ id: `complete-${id}`, type: 'complete' }] } } };
 }
 // Small in-memory evaluator for the Prisma equality/JSON-path filters used here.
 function matches(row: any, where: any): boolean {
@@ -61,6 +69,7 @@ function matches(row: any, where: any): boolean {
 function webhookDb(rows: Row[], postOrg?: string) {
   const posts = rows.map(row => ({ id: row.entityId, board: { organizationId: postOrg ?? row.integration.organizationId }, statusId: 'open' }));
   const db = {
+    integration: { findMany: async ({ where }: any) => rows.map(row => row.integration).filter(row => matches(row, where)) },
     integrationSync: {
       findFirst: async ({ where }: any) => rows.find(row => matches(row, where)) ?? null,
       findMany: async ({ where }: any) => rows.filter(row => matches(row, where)),
@@ -192,3 +201,86 @@ test('concurrent first exports create one issue and keep one stable mapping', as
   assert.deepEqual(first, second);
   assert.equal(mapping.metadata.linearIssueId, first.issueId);
 });
+
+for (const teamId of ['team-a', 'team-b']) {
+  test(`tenant-specific secret authorizes only its integration (${teamId}) without a global secret`, async () => {
+    const tenantBSecret = randomBytes(32).toString('hex');
+    const tenantA = sync('tenant-a', 'immutable-a', 'team-a');
+    const tenantB = sync('tenant-b', 'immutable-a', teamId);
+    tenantB.integration.config.webhookSecret = tenantBSecret;
+    const { db, posts } = webhookDb([tenantA, tenantB]);
+    const event = payload();
+    event.data.team.id = teamId;
+    const body = JSON.stringify(event);
+    const signature = createHmac('sha256', tenantBSecret).update(body).digest('hex');
+    const response = await webhook(db, '')(webhookRequest(body, signature));
+    assert.equal(response.status, 200);
+    assert.deepEqual(posts.map(post => post.statusId), ['open', 'complete-tenant-b']);
+  });
+}
+
+test("tenant A's signature cannot authorize tenant B's team even if it matches the legacy global secret", async () => {
+  const tenantA = sync('tenant-a', 'immutable-a', 'team-a');
+  const tenantB = sync('tenant-b', 'immutable-a', 'team-b');
+  tenantB.integration.config.webhookSecret = randomBytes(32).toString('hex');
+  const { db, posts } = webhookDb([tenantA, tenantB]);
+  const event = payload();
+  event.data.team.id = 'team-b';
+  const response = await webhook(db)(webhookRequest(JSON.stringify(event)));
+  assert.equal(response.status, 401);
+  assert.deepEqual(posts.map(post => post.statusId), ['open', 'open']);
+});
+
+test('webhook timestamp window includes 60 seconds and excludes 61 seconds in both directions', () => {
+  const { isFreshLinearTimestamp } = loadSource('src/lib/linear-security.ts', {});
+  const now = 1_000_000;
+  for (const direction of [-1, 1]) {
+    assert.equal(isFreshLinearTimestamp(now + direction * 60_000, now), true);
+    assert.equal(isFreshLinearTimestamp(now + direction * 61_000, now), false);
+  }
+});
+
+function configRoutes() {
+  let saved: any = null;
+  const db = {
+    organizationMember: { findFirst: async () => ({ organizationId: 'org-a', role: 'admin' }) },
+    integration: {
+      findUnique: async () => saved,
+      upsert: async ({ create, update }: any) => {
+        saved = saved ? { ...saved, ...update } : { id: 'integration-a', ...create };
+        return saved;
+      },
+    },
+  };
+  const routes = loadSource(configFile, { '@/lib/db': { db }, '@/lib/auth': { auth: async () => ({ user: { id: 'user-a' } }) } });
+  return { routes, saved: () => saved };
+}
+const configRequest = (config: unknown) => new Request('https://app.example/api/integrations/linear', {
+  method: 'POST', body: JSON.stringify(config),
+});
+
+test('settings persist and rotate per-integration secrets without returning credentials', async () => {
+  const { routes, saved } = configRoutes();
+  const apiKey = randomBytes(32).toString('hex');
+  for (const webhookSecret of [secret, randomBytes(32).toString('hex')]) {
+    const response = await routes.POST(configRequest({ apiKey, teamId: 'team-a', webhookSecret }));
+    assert.equal(response.status, 201);
+    assert.equal(saved().config.webhookSecret, webhookSecret);
+    const config = (await response.json()).integration.config;
+    assert.equal(config.webhookSecret, undefined);
+    assert.equal(config.apiKey, undefined);
+    const readConfig = (await (await routes.GET()).json()).integration.config;
+    assert.equal(readConfig.webhookSecret, undefined);
+    assert.equal(readConfig.apiKey, undefined);
+    assert.equal(readConfig.teamId, 'team-a');
+  }
+});
+
+for (const webhookSecret of [undefined, '']) {
+  test(`settings reject ${webhookSecret === undefined ? 'missing' : 'empty'} webhook secrets`, async () => {
+    const { routes, saved } = configRoutes();
+    const response = await routes.POST(configRequest({ apiKey: randomBytes(32).toString('hex'), teamId: 'team-a', webhookSecret }));
+    assert.equal(response.status, 400);
+    assert.equal(saved(), null);
+  });
+}

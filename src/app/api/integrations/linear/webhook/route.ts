@@ -6,11 +6,35 @@ import type { Prisma } from '@prisma/client';
 export async function POST(req: Request): Promise<NextResponse> {
   try {
     const rawBody = await req.text();
-    if (!verifyLinearSignature(rawBody, req.headers.get('Linear-Signature'), process.env.LINEAR_WEBHOOK_SIGNING_SECRET)) {
+    const signature = req.headers.get('Linear-Signature');
+    if (!signature || !/^[a-fA-F0-9]{64}$/.test(signature)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const body = JSON.parse(rawBody);
+    let body;
+    try {
+      body = JSON.parse(rawBody);
+    } catch {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     if (!isFreshLinearTimestamp(body?.webhookTimestamp, Date.now())) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // The untrusted team ID only selects candidates; each integration must
+    // authenticate the raw body with its own webhook signing secret.
+    const teamId = body.data?.teamId ?? body.data?.team?.id;
+    if (typeof teamId !== 'string' || !teamId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const candidates = await db.integration.findMany({
+      where: { type: 'linear', isActive: true, config: { path: ['teamId'], equals: teamId } },
+      select: { id: true, config: true },
+    });
+    const integrationIds = candidates.filter((integration) => {
+      const secret = (integration.config as Prisma.JsonObject | null)?.webhookSecret;
+      return typeof secret === 'string' && verifyLinearSignature(rawBody, signature, secret);
+    }).map((integration) => integration.id);
+    if (!integrationIds.length) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -19,13 +43,12 @@ export async function POST(req: Request): Promise<NextResponse> {
 
       if (stateType === 'completed' || stateType === 'done') {
         const issueId = body.data?.id;
-        const teamId = body.data?.teamId ?? body.data?.team?.id;
-        if (typeof issueId !== 'string' || !issueId || typeof teamId !== 'string' || !teamId) {
+        if (typeof issueId !== 'string' || !issueId) {
           return NextResponse.json({ received: true });
         }
 
         const syncs = await db.integrationSync.findMany({
-          where: linearSyncWhere(issueId, teamId),
+          where: { ...linearSyncWhere(issueId, teamId), integrationId: { in: integrationIds } },
           include: {
             integration: {
               include: { organization: { include: { statuses: true } } },

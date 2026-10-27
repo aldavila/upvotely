@@ -6,6 +6,7 @@ import { z } from 'zod';
 const linearConfigSchema = z.object({
   apiKey: z.string().min(1),
   teamId: z.string().min(1),
+  webhookSecret: z.string().min(1),
 });
 
 export async function GET(): Promise<NextResponse> {
@@ -23,7 +24,7 @@ export async function GET(): Promise<NextResponse> {
     });
 
     return NextResponse.json({
-      integration: integration ? { ...integration, config: { ...(integration.config as Record<string, unknown>), apiKey: undefined } } : null,
+      integration: integration ? { ...integration, config: { teamId: (integration.config as Record<string, unknown>).teamId } } : null,
     });
   } catch (error) {
     console.error('Get Linear integration error:', error);
@@ -53,7 +54,7 @@ export async function POST(req: Request): Promise<NextResponse> {
       update: { config: parseResult.data, isActive: true },
     });
 
-    return NextResponse.json({ integration }, { status: 201 });
+    return NextResponse.json({ integration: { ...integration, config: { teamId: parseResult.data.teamId } } }, { status: 201 });
   } catch (error) {
     console.error('Save Linear integration error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

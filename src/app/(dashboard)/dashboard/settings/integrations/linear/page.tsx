@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Copy, Zap } from 'lucide-react';
 
 export default function LinearIntegrationPage() {
-  const [config, setConfig] = useState({ apiKey: '', teamId: '' });
+  const [config, setConfig] = useState({ apiKey: '', teamId: '', webhookSecret: '' });
   const [isConnected, setIsConnected] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -20,7 +20,7 @@ export default function LinearIntegrationPage() {
       .then((data) => {
         if (data.integration) {
           const cfg = data.integration.config as { teamId: string };
-          setConfig({ apiKey: '', teamId: cfg.teamId || '' });
+          setConfig({ apiKey: '', teamId: cfg.teamId || '', webhookSecret: '' });
           setIsConnected(data.integration.isActive);
         }
       })
@@ -42,9 +42,11 @@ export default function LinearIntegrationPage() {
   };
 
   const handleDisconnect = async () => {
-    await fetch('/api/integrations/linear', { method: 'DELETE' });
-    setIsConnected(false);
-    setConfig({ apiKey: '', teamId: '' });
+    const res = await fetch('/api/integrations/linear', { method: 'DELETE' });
+    if (res.ok) {
+      setIsConnected(false);
+      setConfig({ apiKey: '', teamId: '', webhookSecret: '' });
+    }
   };
 
   const webhookUrl = typeof window !== 'undefined' ? `${window.location.origin}/api/integrations/linear/webhook` : '';
@@ -101,6 +103,17 @@ export default function LinearIntegrationPage() {
             />
             <p className="text-xs text-muted-foreground">The Linear team to create issues in</p>
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="webhookSecret">Webhook Signing Secret</Label>
+            <Input
+              id="webhookSecret"
+              type="password"
+              autoComplete="new-password"
+              value={config.webhookSecret}
+              onChange={(e) => setConfig({ ...config, webhookSecret: e.target.value })}
+            />
+            <p className="text-xs text-muted-foreground">Add the webhook URL below in Linear, then paste its signing secret here. Re-enter both secrets when saving changes.</p>
+          </div>
         </CardContent>
       </Card>
 
@@ -120,7 +133,7 @@ export default function LinearIntegrationPage() {
       </Card>
 
       <div className="flex gap-3">
-        <Button onClick={handleSave} disabled={saving || !config.apiKey || !config.teamId}>
+        <Button onClick={handleSave} disabled={saving || !config.apiKey || !config.teamId || !config.webhookSecret}>
           {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
           Save Configuration
         </Button>

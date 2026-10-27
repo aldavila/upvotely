@@ -26,6 +26,9 @@ export async function createLinearIssue(
   try {
     return await db.$transaction(async (tx) => {
       // Serialize first exports as well as retries across server instances.
+      // This holds a pooled connection and lock during the HTTP request (up to
+      // 10s), limiting throughput. A failed commit after creation can orphan an
+      // issue in Linear; this transaction cannot roll back the external API.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${integration.id}), hashtext(${postId}))`;
       const mappingKey = {
         integrationId_entityType_entityId: {
