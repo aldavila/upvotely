@@ -49,11 +49,18 @@ export async function notifyStatusChange(
   const votes = await db.vote.findMany({ where: { postId: post.id }, select: { userId: true } });
   const recipients = [...new Set([post.authorId, ...votes.map(vote => vote.userId)])]
     .filter((userId): userId is string => !!userId && userId !== actorId);
-  await createBulkNotifications(
-    recipients, organizationId, 'status_change', `Status changed on ${post.title}`,
-    `${oldStatus.name} → ${newStatus.name}`, '/dashboard/boards',
-    { postId: post.id, oldStatusId: oldStatus.id, newStatusId: newStatus.id },
-  );
+  const members = await db.organizationMember.findMany({
+    where: { organizationId, userId: { in: recipients } },
+    select: { userId: true },
+  });
+  const memberIds = new Set(members.map(member => member.userId));
+  for (const userId of recipients) {
+    await createNotification({
+      userId, organizationId, type: 'status_change', title: `Status changed on ${post.title}`,
+      message: `${oldStatus.name} → ${newStatus.name}`, link: '/dashboard/boards',
+      metadata: { postId: post.id, oldStatusId: oldStatus.id, newStatusId: newStatus.id },
+    }, { skipEmail: !memberIds.has(userId) });
+  }
 }
 
 export async function notifyMentions(

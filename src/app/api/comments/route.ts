@@ -161,8 +161,12 @@ export async function POST(req: Request): Promise<NextResponse> {
       },
     });
 
-    await notifyMentions(post, comment, post.board.organizationId)
-      .then(mentionedUserIds => notifyNewComment(post, comment, post.board.organizationId, mentionedUserIds))
+    const mentionedUserIds = await notifyMentions(post, comment, post.board.organizationId)
+      .catch(error => {
+        console.error(error);
+        return [];
+      });
+    await notifyNewComment(post, comment, post.board.organizationId, mentionedUserIds)
       .catch(console.error);
 
     return NextResponse.json(comment, { status: 201 });

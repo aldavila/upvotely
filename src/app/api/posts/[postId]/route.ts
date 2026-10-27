@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { z } from 'zod';
@@ -14,7 +14,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ postId
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const { postId } = await params;
-    const parsed = updateStatusSchema.safeParse(await req.json());
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    }
+    const parsed = updateStatusSchema.safeParse(body);
     if (!z.string().cuid().safeParse(postId).success || !parsed.success) {
       return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
     }
@@ -47,7 +53,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ postId
       if (!updated.count) {
         return NextResponse.json({ error: 'Post status changed; retry' }, { status: 409 });
       }
-      void notifyStatusChange(post, post.status, status, organizationId, session.user.id).catch(console.error);
+      const actorId = session.user.id;
+      after(() => notifyStatusChange(post, post.status, status, organizationId, actorId).catch(console.error));
     }
     return NextResponse.json({ id: post.id, statusId: status.id });
   } catch (error) {

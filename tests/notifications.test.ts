@@ -98,7 +98,7 @@ for (const digest of ['daily', 'weekly', 'instant', 'none']) {
 function events(options: {
   internal?: boolean; member?: boolean; authorId?: string | null; failSave?: boolean;
   content?: string; members?: { userId: string; user: { name: string | null; email: string } }[];
-  anonymous?: boolean;
+  anonymous?: boolean; failMentions?: boolean; failCommentNotification?: boolean;
 } = {}) {
   const notifications: any[] = [];
   const emails: any[] = [];
@@ -111,11 +111,11 @@ function events(options: {
     vote: { create: async () => ({}) },
     comment: { create: async ({ data }: any) => { if (options.failSave) throw new Error('Save failed'); return { id: 'comment', ...data }; } },
     organizationMember: {
-      findMany: async ({ where }: any) => { assert.equal(where.organizationId, 'org'); return options.members ?? [{ userId: 'actor' }, { userId: 'recipient' }]; },
+      findMany: async ({ where }: any) => { assert.equal(where.organizationId, 'org'); if (options.failMentions) throw new Error('Mention lookup failed'); return options.members ?? [{ userId: 'actor' }, { userId: 'recipient' }]; },
       findFirst: async ({ where }: any) => { assert.equal(where.organizationId, 'org'); return where.userId === 'actor' || options.member ? { userId: where.userId } : null; },
     },
     notificationPreference: { findUnique: async () => ({ emailDigest: 'instant' }) },
-    notification: { create: async ({ data }: any) => { notifications.push(data); return data; } },
+    notification: { create: async ({ data }: any) => { if (options.failCommentNotification && data.type === 'new_comment') throw new Error('Author notification failed'); notifications.push(data); return data; } },
     $transaction: async (fn: (tx: unknown) => unknown): Promise<unknown> => fn(db),
   };
   const load = loader({
@@ -163,6 +163,16 @@ for (const member of [false, true]) {
     assert.equal(fixture.notifications.length, member ? 1 : 0);
   });
 }
+
+test('mention lookup failure still delivers the post author notification', async () => {
+  const fixture = events({ failMentions: true, content: '@Teammate hello' });
+  assert.equal((await fixture.submit('comments')).status, 201);
+  assert.deepEqual(fixture.notifications.map(n => [n.userId, n.type]), [['recipient', 'new_comment']]);
+});
+test('post author notification failure does not fail the saved comment', async () => {
+  const fixture = events({ failCommentNotification: true });
+  assert.equal((await fixture.submit('comments')).status, 201);
+});
 
 for (const route of ['widget/submit', 'posts']) {
   test(`${route}: anonymous submissions create in-app notifications without instant email`, async () => {
@@ -218,9 +228,11 @@ test('mentions cap recipients at 10 and leave unmentioned post-author notificati
 
 function statusEvents(options: {
   unchanged?: boolean; authorized?: boolean; member?: boolean; foreignStatus?: boolean;
-  failSave?: boolean; failNotify?: boolean; conflict?: boolean;
+  failSave?: boolean; failNotify?: boolean; conflict?: boolean; recipientMembers?: string[];
 } = {}) {
   const notifications: any[] = [];
+  const emails: any[] = [];
+  const afterTasks: (() => Promise<unknown>)[] = [];
   const postId = 'cpost000000000000000000000';
   const oldStatus = { id: 'cstatus0000000000000000000', name: 'Open' };
   const newStatus = options.unchanged ? oldStatus : { id: 'cstatus0000000000000000001', name: 'Planned' };
@@ -240,7 +252,10 @@ function statusEvents(options: {
       assert.equal(where.organizationId, 'org');
       return options.foreignStatus ? null : newStatus;
     } },
-    organizationMember: { findFirst: async ({ where }: any) => {
+    organizationMember: { findMany: async ({ where }: any) => {
+      assert.equal(where.organizationId, 'org');
+      return (options.recipientMembers ?? ['author', 'voter']).map(userId => ({ userId }));
+    }, findFirst: async ({ where }: any) => {
       assert.equal(where.organizationId, 'org');
       assert.equal(where.userId, 'actor');
       assert.deepEqual(Array.from(where.role.in), ['owner', 'admin']);
@@ -251,25 +266,31 @@ function statusEvents(options: {
       // The real Vote.userId FK only permits account holders.
       return [{ userId: 'author' }, { userId: 'voter' }, { userId: 'actor' }, { userId: 'voter' }];
     } },
-    notificationPreference: { findUnique: async () => ({ emailDigest: 'none' }) },
+    notificationPreference: { findUnique: async () => null },
     notification: { create: async ({ data }: any) => {
       if (options.failNotify) throw new Error('Notification failed');
       notifications.push(data);
     } },
   };
   const load = loader({
-    'next/server': responseStub,
+    'next/server': { ...responseStub, after: (task: () => Promise<unknown>) => { afterTasks.push(task); } },
     '@/lib/auth': { auth: async () => options.authorized === false ? null : { user: { id: 'actor' } } },
     '@/lib/db': { db },
+    './email': { sendEmailNotification: async (data: any) => { emails.push(data); } },
   });
+  const handlePatch = (body = JSON.stringify({ statusId: newStatus.id })) =>
+    load('src/app/api/posts/[postId]/route.ts').PATCH(new Request('https://app.example.test/post', {
+      method: 'PATCH', body,
+    }), { params: Promise.resolve({ postId }) });
+  // Model the request lifecycle: close the response, then await registered after work.
+  const finishRequest = async () => {
+    for (const task of afterTasks) await task();
+  };
   return {
-    notifications, writes: () => writes,
+    notifications, emails, afterTasks, handlePatch, finishRequest, writes: () => writes,
     patch: async () => {
-      const response = await load('src/app/api/posts/[postId]/route.ts').PATCH(new Request('https://app.example.test/post', {
-        method: 'PATCH', body: JSON.stringify({ statusId: newStatus.id }),
-      }), { params: Promise.resolve({ postId }) });
-      // Allow fire-and-forget notification work to settle before checking its effects.
-      await new Promise<void>(resolve => setImmediate(resolve));
+      const response = await handlePatch();
+      await finishRequest();
       return response;
     },
     load, oldStatus,
@@ -306,4 +327,30 @@ test('status notification failure does not break the successful request', async 
   const fixture = statusEvents({ failNotify: true });
   assert.equal((await fixture.patch()).status, 200);
   assert.equal(fixture.writes(), 1);
+});
+
+test('status delivery is registered with the request lifecycle and completes on close', async () => {
+  const fixture = statusEvents();
+  assert.equal((await fixture.handlePatch()).status, 200);
+  assert.equal(fixture.afterTasks.length, 1);
+  assert.equal(fixture.notifications.length, 0);
+  await fixture.finishRequest();
+  assert.deepEqual(fixture.notifications.map(n => n.userId), ['author', 'voter']);
+  assert.deepEqual(fixture.emails.map(n => n.userId), ['author', 'voter']);
+});
+for (const recipientMembers of [[], ['author'], ['voter']]) {
+  test(`status recipients outside organization get in-app only (members=${recipientMembers})`, async () => {
+    const fixture = statusEvents({ recipientMembers });
+    assert.equal((await fixture.patch()).status, 200);
+    assert.deepEqual(fixture.notifications.map(n => n.userId), ['author', 'voter']);
+    assert.deepEqual(fixture.emails.map(n => n.userId), recipientMembers);
+  });
+}
+test('status PATCH rejects malformed JSON before writing or scheduling notifications', async () => {
+  const fixture = statusEvents();
+  const response = await fixture.handlePatch('{');
+  assert.equal(response.status, 400);
+  assert.equal(fixture.writes(), 0);
+  assert.equal(fixture.afterTasks.length, 0);
+  assert.equal(fixture.notifications.length, 0);
 });
