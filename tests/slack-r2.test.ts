@@ -6,20 +6,20 @@ import { closeSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync, writ
 import { join } from 'node:path';
 import { loadSource } from './load-source';
 
-test('db-push deployment reaches next build without deploying incremental migrations', () => {
+test('build generates Prisma client before next build without deploying migrations', () => {
   mkdirSync('/tmp/upvotely-r2', { recursive: true });
   const dir = mkdtempSync('/tmp/upvotely-r2/deploy-');
   const output = openSync(join(dir, 'output'), 'w');
   try {
     // Run the real build script with offline process doubles. This project has
-    // no migration baseline: builds must not run migrate deploy on fresh or
-    // db-push-managed databases. Never start Prisma or access a database.
+    // no migration baseline: builds must not deploy migrations or access a
+    // database. Never start the real Prisma or Next.js processes.
     writeFileSync(join(dir, 'prisma'), `#!${process.execPath}
 const fs = require('node:fs');
 const assert = require('node:assert/strict');
 const args = process.argv.slice(2).join(' ');
 fs.appendFileSync(${JSON.stringify(join(dir, 'calls'))}, args + '\\n');
-assert.equal(args, 'generate');
+assert.equal(args, 'generate', 'build must only generate the Prisma client');
 `, { mode: 0o755 });
     writeFileSync(join(dir, 'next'), `#!${process.execPath}
 require('node:assert/strict').deepEqual(process.argv.slice(2), ['build']);
