@@ -246,11 +246,13 @@ export async function POST(req: Request): Promise<NextResponse> {
       return post;
     });
 
-    await notifyPostCreated(board.organizationId, {
-      title: result.title, content: result.content, boardName: board.name,
-      authorName: result.author?.name ?? null,
-      organizationSlug: board.organization.slug, boardSlug: board.slug,
-    });
+    if (result.isApproved) {
+      notifyPostCreated(board.organizationId, {
+        title: result.title, content: result.content, boardName: board.name,
+        authorName: result.author?.name ?? null,
+        organizationSlug: board.organization.slug, boardSlug: board.slug,
+      }).catch(() => {});
+    }
 
     // Fire-and-forget: AI categorization, sentiment analysis, and duplicate detection
     categorizeAndUpdatePost(result.id, sanitizedTitle, sanitizedContent).catch(() => {});

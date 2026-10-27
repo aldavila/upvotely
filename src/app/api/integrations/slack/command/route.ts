@@ -94,6 +94,7 @@ export async function POST(req: Request): Promise<NextResponse> {
         boardId: board.id,
         statusId: defaultStatus.id,
         isAnonymous: true,
+        isApproved: !board.requireApproval,
       },
     });
 
@@ -108,19 +109,22 @@ export async function POST(req: Request): Promise<NextResponse> {
       },
     });
 
-    await notifyPostCreated(integration.organizationId, {
-      title, content, boardName: board.name, authorName: userName,
-      organizationSlug: org.slug, boardSlug: board.slug,
-    });
+    if (post.isApproved) {
+      notifyPostCreated(integration.organizationId, {
+        title, content, boardName: board.name, authorName: userName,
+        organizationSlug: org.slug, boardSlug: board.slug,
+      }).catch(() => {});
+    }
 
     return NextResponse.json({
-      response_type: 'in_channel',
-      text: `Feedback created: *${title}*\nSubmitted by ${userName} via Slack`,
+      response_type: post.isApproved ? 'in_channel' : 'ephemeral',
+      text: post.isApproved ? `Feedback created: *${title}*\nSubmitted by ${userName} via Slack` : 'Feedback submitted for approval.',
     });
   } catch (error) {
     if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
-      return NextResponse.json({ error: 'Workspace is already connected' }, { status: 409 });
+      return NextResponse.json({ response_type: 'ephemeral', text: 'Workspace is already connected' }, { status: 409 });
     }
+    console.error('Slack command failed');
     return NextResponse.json({
       response_type: 'ephemeral',
       text: 'Something went wrong. Please try again.',

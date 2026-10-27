@@ -13,9 +13,6 @@ interface SlackConfig {
   webhookUrl: string;
   channel: string;
   notifyOnNewPost: boolean;
-  notifyOnStatusChange: boolean;
-  notifyOnVoteMilestone: boolean;
-  voteMilestones: number[];
 }
 
 export default function SlackIntegrationPage() {
@@ -23,9 +20,6 @@ export default function SlackIntegrationPage() {
     webhookUrl: '',
     channel: '',
     notifyOnNewPost: true,
-    notifyOnStatusChange: true,
-    notifyOnVoteMilestone: true,
-    voteMilestones: [10, 25, 50, 100],
   });
   const [isConnected, setIsConnected] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -76,7 +70,7 @@ export default function SlackIntegrationPage() {
       setIsConnected(false);
       setWorkspaceId(null);
       setConnectionCode('');
-      setConfig({ webhookUrl: '', channel: '', notifyOnNewPost: true, notifyOnStatusChange: true, notifyOnVoteMilestone: true, voteMilestones: [10, 25, 50, 100] });
+      setConfig({ webhookUrl: '', channel: '', notifyOnNewPost: true });
     } catch {
       setError('Could not disconnect. Please try again.');
     }
@@ -160,26 +154,6 @@ export default function SlackIntegrationPage() {
             <Switch
               checked={config.notifyOnNewPost}
               onCheckedChange={(checked) => setConfig({ ...config, notifyOnNewPost: checked })}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Status change notifications</p>
-              <p className="text-sm text-muted-foreground">Notify when post status changes</p>
-            </div>
-            <Switch
-              checked={config.notifyOnStatusChange}
-              onCheckedChange={(checked) => setConfig({ ...config, notifyOnStatusChange: checked })}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Vote milestone notifications</p>
-              <p className="text-sm text-muted-foreground">Notify when posts reach vote milestones</p>
-            </div>
-            <Switch
-              checked={config.notifyOnVoteMilestone}
-              onCheckedChange={(checked) => setConfig({ ...config, notifyOnVoteMilestone: checked })}
             />
           </div>
         </CardContent>

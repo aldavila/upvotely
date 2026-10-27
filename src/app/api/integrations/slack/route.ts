@@ -11,9 +11,6 @@ const slackConfigSchema = z.object({
   webhookUrl: z.string().refine(isSlackWebhookUrl, 'Use an HTTPS hooks.slack.com URL'),
   channel: z.string().optional(),
   notifyOnNewPost: z.boolean().default(true),
-  notifyOnStatusChange: z.boolean().default(true),
-  notifyOnVoteMilestone: z.boolean().default(true),
-  voteMilestones: z.array(z.number()).default([10, 25, 50, 100]),
 });
 
 export async function GET(): Promise<NextResponse> {
@@ -37,8 +34,8 @@ export async function GET(): Promise<NextResponse> {
     });
 
     return NextResponse.json({ integration });
-  } catch (error) {
-    console.error('Get Slack integration error:', error);
+  } catch {
+    console.error('Get Slack integration failed');
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -90,8 +87,9 @@ export async function POST(req: Request): Promise<NextResponse> {
     });
 
     return NextResponse.json({ integration, connectionCode: integration.slackTeamId ? undefined : connectionCode }, { status: 201 });
-  } catch (error) {
+  } catch {
     // Database errors can contain the webhook URL or connection hash.
+    console.error('Save Slack integration failed');
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -116,8 +114,8 @@ export async function DELETE(): Promise<NextResponse> {
     });
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Delete Slack integration error:', error);
+  } catch {
+    console.error('Delete Slack integration failed');
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

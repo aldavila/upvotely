@@ -90,10 +90,12 @@ export async function POST(req: Request): Promise<NextResponse> {
       },
     });
 
-    await notifyPostCreated(board.organizationId, {
-      title: post.title, content: post.content, boardName: board.name,
-      authorName: null, organizationSlug: board.organization.slug, boardSlug: board.slug,
-    });
+    if (post.isApproved) {
+      notifyPostCreated(board.organizationId, {
+        title: post.title, content: post.content, boardName: board.name,
+        authorName: null, organizationSlug: board.organization.slug, boardSlug: board.slug,
+      }).catch(() => {});
+    }
 
     return NextResponse.json({
       success: true,

@@ -10,7 +10,7 @@ interface SlackMessage {
 export async function sendSlackNotification(
   organizationId: string,
   message: SlackMessage,
-  preference?: 'notifyOnNewPost' | 'notifyOnStatusChange' | 'notifyOnVoteMilestone'
+  preference?: 'notifyOnNewPost'
 ): Promise<boolean> {
   try {
     const integration = await db.integration.findUnique({
@@ -59,7 +59,7 @@ export function buildPostCreatedMessage(post: {
   url: string;
 }): SlackMessage {
   return {
-    text: `New feedback: ${post.title}`,
+    text: `New feedback: ${escapeSlackText(post.title)}`,
     blocks: [
       {
         type: 'header',
@@ -69,54 +69,19 @@ export function buildPostCreatedMessage(post: {
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: `*${post.title}*\n${post.content.slice(0, 200)}${post.content.length > 200 ? '...' : ''}`,
+          text: `*${escapeSlackText(post.title)}*\n${escapeSlackText(post.content.slice(0, 200))}${post.content.length > 200 ? '...' : ''}`,
         },
       },
       {
         type: 'context',
         elements: [
-          { type: 'mrkdwn', text: `By ${post.authorName || 'Anonymous'} | <${post.url}|View Post>` },
+          { type: 'mrkdwn', text: `By ${escapeSlackText(post.authorName || 'Anonymous')} | <${post.url}|View Post>` },
         ],
       },
     ],
   };
 }
 
-export function buildVoteMilestoneMessage(post: {
-  title: string;
-  voteCount: number;
-  url: string;
-}): SlackMessage {
-  return {
-    text: `"${post.title}" reached ${post.voteCount} votes!`,
-    blocks: [
-      {
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: `*"${post.title}"* reached *${post.voteCount} votes*!\n<${post.url}|View Post>`,
-        },
-      },
-    ],
-  };
-}
-
-export function buildStatusChangeMessage(post: {
-  title: string;
-  oldStatus: string;
-  newStatus: string;
-  url: string;
-}): SlackMessage {
-  return {
-    text: `Status changed: "${post.title}" → ${post.newStatus}`,
-    blocks: [
-      {
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: `*"${post.title}"* status changed\n${post.oldStatus} → *${post.newStatus}*\n<${post.url}|View Post>`,
-        },
-      },
-    ],
-  };
+function escapeSlackText(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
