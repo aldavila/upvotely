@@ -3,9 +3,13 @@ import { resolve, dirname } from 'node:path';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
 
-// Execute the actual handlers with isolated dependencies. No DB, auth provider,
-// AI service or network can load unless a test explicitly supplies a fake.
-export function loadSource(entry: string, stubs: Record<string, unknown>, env: Record<string, string> = {}, fetchStub?: typeof fetch, errorLog: (...args: unknown[]) => void = () => {}): any {
+// Execute handlers with isolated dependencies. Support both Linear tests passing
+// sandbox globals and Slack tests passing env, fetch, and error-log arguments.
+// DB, auth, AI, and network boundaries require explicit test fakes.
+export function loadSource(entry: string, stubs: Record<string, unknown>, envOrGlobals: Record<string, unknown> = {}, fetchStub?: typeof fetch, errorLog: (...args: unknown[]) => void = () => {}): any {
+  const usesGlobals = Object.values(envOrGlobals).some(value => typeof value !== 'string');
+  const globals = usesGlobals ? envOrGlobals : {};
+  const env = usesGlobals ? {} : envOrGlobals;
   const cache = new Map<string, { exports: any }>();
   function load(file: string): any {
     let path = resolve(file);
@@ -19,7 +23,7 @@ export function loadSource(entry: string, stubs: Record<string, unknown>, env: R
     runInNewContext(code, {
       module: mod, exports: mod.exports,
       require: (id: string) => {
-        if (id in stubs) return stubs[id];
+        if (Object.hasOwn(stubs, id)) return stubs[id];
         if (['@/lib/db', '@/lib/auth', '@/lib/api-auth'].includes(id) || id.startsWith('@/lib/ai/')) throw new Error('Missing fake dependency');
         if (id.startsWith('@/')) return load(resolve('src', id.slice(2)));
         if (id.startsWith('.')) return load(resolve(dirname(path), id));
@@ -30,6 +34,7 @@ export function loadSource(entry: string, stubs: Record<string, unknown>, env: R
       process: { env },
       console: { error: errorLog },
       fetch: fetchStub ?? (() => { throw new Error('Network forbidden in tests'); }),
+      ...globals,
     }, { filename: path });
     return mod.exports;
   }

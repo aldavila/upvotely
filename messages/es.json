@@ -426,6 +426,35 @@
       "save": "Guardar Configuración",
       "connectionSuccess": "¡Conectado exitosamente a Slack!",
       "connectionFailed": "Error al conectar con Slack"
+    },
+    "linear": {
+      "title": "Linear",
+      "description": "Crea issues y sincroniza estado con Linear",
+      "apiKey": "Clave API",
+      "apiKeyDescription": "Tu clave API de Linear",
+      "teamId": "ID del Equipo",
+      "teamIdDescription": "El equipo de Linear donde crear issues",
+      "createIssue": "Crear Issue en Linear",
+      "issueCreated": "Issue de Linear creado exitosamente",
+      "issueFailed": "Error al crear issue de Linear",
+      "linkedIssue": "Issue de Linear Vinculado",
+      "viewOnLinear": "Ver en Linear",
+      "connected": "Conectado",
+      "disconnected": "No Conectado",
+      "save": "Guardar Configuración",
+      "webhookUrl": "URL del Webhook",
+      "webhookUrlDescription": "Agrega esta URL en la configuración de webhooks de Linear"
     }
+  },
+  "voterNotifications": {
+    "statusUpdate": "Actualización de Estado",
+    "statusChanged": "Tu solicitud \"{title}\" ahora está {status}",
+    "subscribed": "Suscrito a actualizaciones",
+    "unsubscribed": "Desuscrito de actualizaciones",
+    "subscribe": "Suscribirse",
+    "unsubscribe": "Desuscribirse",
+    "unsubscribeSuccess": "Te has desuscrito de las actualizaciones de este post",
+    "notifyVoters": "Notificar a los votantes de este cambio",
+    "votersNotified": "{count} votantes han sido notificados"
   }
 }

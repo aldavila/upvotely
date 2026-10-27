@@ -426,6 +426,35 @@
       "save": "Save Configuration",
       "connectionSuccess": "Successfully connected to Slack!",
       "connectionFailed": "Failed to connect to Slack"
+    },
+    "linear": {
+      "title": "Linear",
+      "description": "Create issues and sync status with Linear",
+      "apiKey": "API Key",
+      "apiKeyDescription": "Your Linear API key",
+      "teamId": "Team ID",
+      "teamIdDescription": "The Linear team to create issues in",
+      "createIssue": "Create Linear Issue",
+      "issueCreated": "Linear issue created successfully",
+      "issueFailed": "Failed to create Linear issue",
+      "linkedIssue": "Linked Linear Issue",
+      "viewOnLinear": "View on Linear",
+      "connected": "Connected",
+      "disconnected": "Not Connected",
+      "save": "Save Configuration",
+      "webhookUrl": "Webhook URL",
+      "webhookUrlDescription": "Add this URL to your Linear webhook settings"
     }
+  },
+  "voterNotifications": {
+    "statusUpdate": "Status Update",
+    "statusChanged": "Your feature request \"{title}\" is now {status}",
+    "subscribed": "Subscribed to updates",
+    "unsubscribed": "Unsubscribed from updates",
+    "subscribe": "Subscribe",
+    "unsubscribe": "Unsubscribe",
+    "unsubscribeSuccess": "You have been unsubscribed from updates for this post",
+    "notifyVoters": "Notify voters of this change",
+    "votersNotified": "{count} voters have been notified"
   }
 }
