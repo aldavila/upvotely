@@ -49,5 +49,6 @@ next-env.d.ts
 logs
 *.log
 
+# Prisma
 # Database schema is managed with prisma db push
 prisma/migrations
