@@ -2,24 +2,37 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "CommonJS",
-    "moduleResolution": "node",
-    "lib": ["ES2022", "DOM"],
-    "types": ["node"],
-    "strict": true,
+    "moduleResolution": "Node",
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "types": [
+      "node"
+    ],
     "esModuleInterop": true,
-    "jsx": "react-jsx",
-    "paths": { "@/*": ["./src/*"] },
+    "strict": true,
     "skipLibCheck": true,
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    },
     "rootDir": ".",
     "outDir": ".test-dist"
   },
   "include": [
+    "src/lib/linear-*.ts",
+    "src/lib/integrations/linear.ts",
+    "src/app/api/integrations/linear/**/*.ts",
+    "src/app/(dashboard)/dashboard/settings/integrations/linear/page.tsx",
+    "tests/**/*.ts",
+    "src/lib/slack-security.ts",
     "src/lib/github-security.ts",
     "src/lib/integrations/github.ts",
     "src/app/api/integrations/github/**/*.ts",
     "src/app/(dashboard)/dashboard/settings/integrations/github/page.tsx",
-    "tests/github.test.ts",
-    "src/lib/slack-security.ts",
-    "tests/**/*.ts"
+    "tests/github.test.ts"
   ]
 }
