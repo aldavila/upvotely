@@ -49,3 +49,5 @@ prisma/migrations
 # Logs
 logs
 *.log
+
+.test-dist/

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { createLinearIssue } from '@/lib/integrations/linear';
+import { organizationPostWhere } from '@/lib/linear-security';
 import { z } from 'zod';
 
 const createIssueSchema = z.object({ postId: z.string().cuid() });
@@ -23,7 +24,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     }
 
     const post = await db.post.findUnique({
-      where: { id: parseResult.data.postId },
+      where: organizationPostWhere(parseResult.data.postId, membership.organizationId),
       include: { board: true, status: true },
     });
     if (!post) return NextResponse.json({ error: 'Post not found' }, { status: 404 });

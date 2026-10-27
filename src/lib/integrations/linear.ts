@@ -24,76 +24,94 @@ export async function createLinearIssue(
   const { integration, config } = result;
 
   try {
-    const response = await fetch(LINEAR_API_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: config.apiKey,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        query: `mutation IssueCreate($input: IssueCreateInput!) {
-          issueCreate(input: $input) {
-            success
-            issue {
-              id
-              identifier
-              url
-              title
-            }
-          }
-        }`,
-        variables: {
-          input: {
-            teamId: config.teamId,
-            title: data.title,
-            description: `${data.description}\n\n---\n*Created from Upvotely feedback*`,
-          },
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      console.error('Linear API error:', await response.text());
-      return null;
-    }
-
-    const json = await response.json();
-    const issue = json.data?.issueCreate?.issue;
-
-    if (!issue) {
-      console.error('Linear issue creation failed:', json);
-      return null;
-    }
-
-    await db.integrationSync.upsert({
-      where: {
+    return await db.$transaction(async (tx) => {
+      // Serialize first exports as well as retries across server instances.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${integration.id}), hashtext(${postId}))`;
+      const mappingKey = {
         integrationId_entityType_entityId: {
           integrationId: integration.id,
           entityType: 'post',
           entityId: postId,
         },
-      },
-      create: {
-        integrationId: integration.id,
-        entityType: 'post',
-        entityId: postId,
-        externalId: issue.identifier,
-        externalUrl: issue.url,
-        direction: 'outbound',
-        metadata: { linearIssueId: issue.id },
-      },
-      update: {
-        externalId: issue.identifier,
-        externalUrl: issue.url,
-        metadata: { linearIssueId: issue.id },
-      },
-    });
+      };
+      const existing = await tx.integrationSync.findUnique({ where: mappingKey });
+      if (existing) {
+        const metadata = existing.metadata as { linearIssueId?: unknown } | null;
+        if (typeof metadata?.linearIssueId !== 'string' || !existing.externalUrl) return null;
+        return {
+          issueId: metadata.linearIssueId,
+          issueIdentifier: existing.externalId,
+          issueUrl: existing.externalUrl,
+        };
+      }
 
-    return {
-      issueId: issue.id,
-      issueIdentifier: issue.identifier,
-      issueUrl: issue.url,
-    };
+      const response = await fetch(LINEAR_API_URL, {
+        method: 'POST',
+        redirect: 'manual',
+        signal: AbortSignal.timeout(10_000),
+        headers: {
+          Authorization: config.apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: `mutation IssueCreate($input: IssueCreateInput!) {
+            issueCreate(input: $input) {
+              success
+              issue {
+                id
+                identifier
+                url
+                title
+              }
+            }
+          }`,
+          variables: {
+            input: {
+              teamId: config.teamId,
+              title: data.title,
+              description: `${data.description}\n\n---\n*Created from Upvotely feedback*`,
+            },
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        console.error('Linear API error:', await response.text());
+        return null;
+      }
+
+      const json = await response.json();
+      const issue = json.data?.issueCreate?.issue;
+
+      if (!issue) {
+        console.error('Linear issue creation failed:', json);
+        return null;
+      }
+
+      await tx.integrationSync.upsert({
+        where: mappingKey,
+        create: {
+          integrationId: integration.id,
+          entityType: 'post',
+          entityId: postId,
+          externalId: issue.identifier,
+          externalUrl: issue.url,
+          direction: 'outbound',
+          metadata: { linearIssueId: issue.id },
+        },
+        update: {
+          externalId: issue.identifier,
+          externalUrl: issue.url,
+          metadata: { linearIssueId: issue.id },
+        },
+      });
+
+      return {
+        issueId: issue.id,
+        issueIdentifier: issue.identifier,
+        issueUrl: issue.url,
+      };
+    }, { timeout: 30_000 });
   } catch (error) {
     console.error('Linear issue creation error:', error);
     return null;
