@@ -2,6 +2,7 @@ import { db } from '@/lib/db';
 import type { Prisma } from '@prisma/client';
 import { effectiveEmailFrequency } from './preferences';
 import { sendEmailNotification } from './email';
+import { statusNotificationChannels } from '@/lib/status-notification-policy';
 
 export type NotificationType = 'new_post' | 'status_change' | 'new_comment' | 'mention' | 'vote_milestone';
 
@@ -26,7 +27,7 @@ function toPrefKey(type: NotificationType, prefix: 'inApp' | 'email'): string {
   return map[type];
 }
 
-export async function createNotification(params: CreateNotificationParams, options: { skipEmail?: boolean } = {}) {
+export async function createNotification(params: CreateNotificationParams, options: { skipEmail?: boolean; statusEmail?: { postId: string; postTitle: string; newStatus: string } } = {}) {
   const prefs = await db.notificationPreference.findUnique({
     where: { userId_organizationId: { userId: params.userId, organizationId: params.organizationId } },
   });
@@ -34,12 +35,13 @@ export async function createNotification(params: CreateNotificationParams, optio
   const inAppKey = toPrefKey(params.type, 'inApp');
   const emailKey = toPrefKey(params.type, 'email');
 
-  const shouldInApp = !prefs || (prefs as Record<string, unknown>)[inAppKey] !== false;
-  const shouldEmail = !options.skipEmail && (!prefs || (prefs as Record<string, unknown>)[emailKey] !== false)
+  const channels = params.type === 'status_change' ? statusNotificationChannels(prefs) : null;
+  const shouldInApp = channels?.inApp ?? (!prefs || (prefs as Record<string, unknown>)[inAppKey] !== false);
+  const shouldEmail = !options.skipEmail && (channels?.email ?? (!prefs || (prefs as Record<string, unknown>)[emailKey] !== false))
     && effectiveEmailFrequency(prefs?.emailDigest) === 'instant';
 
   if (shouldInApp) {
-    await db.notification.create({ data: params });
+    await db.notification.create({ data: params }).catch(console.error);
   }
 
   if (shouldEmail) {
@@ -48,6 +50,7 @@ export async function createNotification(params: CreateNotificationParams, optio
       title: params.title,
       message: params.message,
       link: params.link,
+      statusEmail: options.statusEmail,
     }).catch(console.error);
   }
 

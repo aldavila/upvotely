@@ -1,5 +1,6 @@
 import { db } from '@/lib/db';
 import { buildEmailTemplate } from './template';
+import { buildStatusChangeEmail } from '@/lib/status-notification-policy';
 
 interface EmailParams {
   to: string;
@@ -12,11 +13,18 @@ export async function sendEmailNotification(params: {
   title: string;
   message: string;
   link?: string;
+  statusEmail?: { postId: string; postTitle: string; newStatus: string };
 }) {
   const user = await db.user.findUnique({ where: { id: params.userId } });
   if (!user?.email) return;
 
-  const html = buildEmailTemplate(params.title, params.message, params.link);
+  const status = params.statusEmail;
+  const secret = process.env.UNSUBSCRIBE_TOKEN_SECRET;
+  if (status && !secret) throw new Error('UNSUBSCRIBE_TOKEN_SECRET is required');
+  const html = status
+    ? buildStatusChangeEmail(status.postTitle, status.newStatus, status.postId, params.userId,
+      process.env.NEXTAUTH_URL || 'https://app.upvotely.io', secret!)
+    : buildEmailTemplate(params.title, params.message, params.link);
   const emailParams: EmailParams = { to: user.email, subject: params.title, html };
 
   const emailProvider = process.env.EMAIL_PROVIDER || 'resend';

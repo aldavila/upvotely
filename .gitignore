@@ -7,6 +7,7 @@ node_modules
 # Testing
 coverage
 .test-dist/
+.test-dist
 
 # Next.js
 .next/
@@ -43,9 +44,6 @@ next-env.d.ts
 .vscode
 *.swp
 *.swo
-
-# Prisma
-prisma/migrations
 
 # Logs
 logs

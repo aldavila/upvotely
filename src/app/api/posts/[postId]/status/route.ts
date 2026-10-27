@@ -1,0 +1,78 @@
+import { NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
+import { db } from '@/lib/db';
+import { z } from 'zod';
+import { notifyStatusChange } from '@/lib/notifications/events';
+import { isOrganizationAdmin } from '@/lib/status-notification-policy';
+
+const updateStatusSchema = z.object({
+  statusId: z.string().cuid(),
+});
+
+export async function PATCH(
+  req: Request,
+  { params }: { params: Promise<{ postId: string }> }
+): Promise<NextResponse> {
+  try {
+    const { postId } = await params;
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const parseResult = updateStatusSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json({ error: 'Invalid input', details: parseResult.error.issues }, { status: 400 });
+    }
+
+    const post = await db.post.findUnique({
+      where: { id: postId },
+      include: { status: true, board: true },
+    });
+
+    if (!post) {
+      return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+    }
+
+    const organizationId = post.board.organizationId;
+    const membership = await db.organizationMember.findFirst({
+      where: { userId: session.user.id, organizationId },
+    });
+
+    if (!isOrganizationAdmin(membership, organizationId)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const newStatus = await db.status.findUnique({
+      where: { id: parseResult.data.statusId },
+    });
+
+    if (!newStatus || newStatus.organizationId !== organizationId) {
+      return NextResponse.json({ error: 'Status not found' }, { status: 404 });
+    }
+
+    if (post.statusId === newStatus.id) {
+      return NextResponse.json({ post });
+    }
+
+    const updated = await db.post.updateMany({
+      where: { id: postId, statusId: post.statusId },
+      data: { statusId: parseResult.data.statusId },
+    });
+
+    if (!updated.count) {
+      return NextResponse.json({ error: 'Post status changed; retry' }, { status: 409 });
+    }
+    await notifyStatusChange(post, post.status, newStatus, organizationId, session.user.id)
+      .catch(console.error);
+    const updatedPost = await db.post.findUnique({
+      where: { id: postId }, include: { status: true },
+    });
+
+    return NextResponse.json({ post: updatedPost });
+  } catch (error) {
+    console.error('Update post status error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

@@ -42,13 +42,17 @@ export async function notifyStatusChange(
   oldStatus: { id: string; name: string },
   newStatus: { id: string; name: string },
   organizationId: string,
-  actorId: string,
+  actorId?: string,
 ) {
   if (oldStatus.id === newStatus.id) return;
   // Vote.userId and Post.authorId reference real User accounts, not widget visitors/customers.
   const votes = await db.vote.findMany({ where: { postId: post.id }, select: { userId: true } });
+  const subscriptions = await db.postSubscription.findMany({
+    where: { postId: post.id, isSubscribed: false }, select: { userId: true },
+  });
+  const unsubscribed = new Set(subscriptions.map(subscription => subscription.userId));
   const recipients = [...new Set([post.authorId, ...votes.map(vote => vote.userId)])]
-    .filter((userId): userId is string => !!userId && userId !== actorId);
+    .filter((userId): userId is string => !!userId && userId !== actorId && !unsubscribed.has(userId));
   const members = await db.organizationMember.findMany({
     where: { organizationId, userId: { in: recipients } },
     select: { userId: true },
@@ -59,8 +63,12 @@ export async function notifyStatusChange(
       userId, organizationId, type: 'status_change', title: `Status changed on ${post.title}`,
       message: `${oldStatus.name} → ${newStatus.name}`, link: '/dashboard/boards',
       metadata: { postId: post.id, oldStatusId: oldStatus.id, newStatusId: newStatus.id },
-    }, { skipEmail: !memberIds.has(userId) });
+    }, {
+      skipEmail: !memberIds.has(userId),
+      statusEmail: { postId: post.id, postTitle: post.title, newStatus: newStatus.name },
+    });
   }
+  return { notified: recipients.length };
 }
 
 export async function notifyMentions(

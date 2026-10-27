@@ -85,6 +85,35 @@ Upvotely is an open-source Canny alternative with flat pricing. Collect, organiz
 2. Create a new OAuth App
 3. Set callback URL to `http://localhost:3000/api/auth/callback/github`
 
+### GitHub integration webhooks and export recovery
+
+An organization owner or admin must save the GitHub connection settings and copy
+the generated webhook secret into that repository's GitHub webhook settings.
+Use the displayed webhook URL, `application/json`, and Issues events. Each save
+rotates the secret. Existing connections must be saved once; there is no shared
+environment secret fallback. Secrets are stored in the existing integration JSON
+config and are visible only through the organization's admin integration API.
+
+Explicit HTTP export failures release their reservation so the request can be
+retried after fixing the configuration. Lost responses, invalid success bodies,
+and failed database writes retain it because an issue may already exist. After
+15 minutes, an owner or admin can resolve that post's pending export through
+`POST /api/integrations/github/issues`, using the normal `postId` plus
+`"resolvePending": { "issueNumber": 7, "confirmed": true }`. First inspect GitHub
+and confirm which issue belongs to the post; the server verifies that issue
+exists before linking it, without creating another issue. New reservations
+remember their original repository. For older reservations, restore the original
+repository configuration before linking an existing issue.
+
+If manual inspection confirms that **no issue was created**, including in any
+previously configured repository, use `"issueNumber": null` with
+`"confirmed": true` instead. This explicitly authorizes releasing that stale
+reservation and trying the export again; it does not automatically infer absence
+from a failed GitHub request. Do not use this override when the outcome is still
+unknown. Other exported posts and their mappings are preserved. Existing synced
+exports always return their original issue, even after the repository changes;
+webhook status sync follows only the currently configured repository.
+
 ## 📁 Project Structure
 
 ```
@@ -140,7 +169,9 @@ npm run db:studio    # Open Prisma Studio
 
 Database schema changes are a separate, explicit operator step and never run during the Vercel build. The build only generates the Prisma client and builds Next.js; it does not require database access.
 
-The schema is currently managed with `prisma db push`: `prisma/migrations` is gitignored and no migrations are committed. Run `npm run db:push` against the target `DATABASE_URL` to apply schema changes. Once migrations are committed, use `npm run db:deploy` against the target `DATABASE_URL` instead.
+Schema changes are managed with committed Prisma migrations in `prisma/migrations` (baseline `0_init`). Run `npm run db:deploy` against the target `DATABASE_URL` to apply them.
+
+Existing databases that were created with `prisma db push` must be baselined once with `npx prisma migrate resolve --applied 0_init` before the first `npm run db:deploy`. Fresh databases just run `npm run db:deploy`.
 
 Apply schema changes **before deploying code that needs new columns**.
 

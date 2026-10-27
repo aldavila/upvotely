@@ -123,6 +123,7 @@ function events(options: {
     '@/lib/db': { db },
     '@/lib/auth': { auth: async () => ({ user: { id: 'actor' } }) },
     '@/lib/api-auth': { authenticateApiKey: async () => null },
+    '@/lib/integrations/slack': { notifyPostCreated: async () => {} },
     './email': { sendEmailNotification: async (data: any) => { emails.push(data); } },
     '@/lib/ai/categorize': { categorizeAndUpdatePost: async () => {} },
     '@/lib/ai/sentiment': { analyzeAndUpdateSentiment: async () => {} },
@@ -228,7 +229,7 @@ test('mentions cap recipients at 10 and leave unmentioned post-author notificati
 
 function statusEvents(options: {
   unchanged?: boolean; authorized?: boolean; member?: boolean; foreignStatus?: boolean;
-  failSave?: boolean; failNotify?: boolean; conflict?: boolean; recipientMembers?: string[];
+  failSave?: boolean; failNotify?: boolean; conflict?: boolean; recipientMembers?: string[]; unsubscribed?: string[];
 } = {}) {
   const notifications: any[] = [];
   const emails: any[] = [];
@@ -245,10 +246,10 @@ function statusEvents(options: {
         assert.equal(data.statusId, newStatus.id);
         if (options.failSave) throw new Error('Save failed');
         writes++;
-        return { count: options.conflict ? 0 : 1 };
+        return { count: options.conflict || writes > 1 ? 0 : 1 };
       },
     },
-    status: { findFirst: async ({ where }: any) => {
+    status: { findUnique: async () => ({ ...newStatus, organizationId: options.foreignStatus ? 'other-org' : 'org' }), findFirst: async ({ where }: any) => {
       assert.equal(where.organizationId, 'org');
       return options.foreignStatus ? null : newStatus;
     } },
@@ -258,9 +259,10 @@ function statusEvents(options: {
     }, findFirst: async ({ where }: any) => {
       assert.equal(where.organizationId, 'org');
       assert.equal(where.userId, 'actor');
-      assert.deepEqual(Array.from(where.role.in), ['owner', 'admin']);
-      return options.member === false ? null : { role: 'admin' };
+      if (where.role) assert.deepEqual(Array.from(where.role.in), ['owner', 'admin']);
+      return options.member === false ? null : { role: 'admin', organizationId: 'org' };
     } },
+    postSubscription: { findMany: async () => (options.unsubscribed ?? []).map(userId => ({ userId })) },
     vote: { findMany: async ({ where }: any) => {
       assert.equal(where.postId, postId);
       // The real Vote.userId FK only permits account holders.
@@ -353,4 +355,26 @@ test('status PATCH rejects malformed JSON before writing or scheduling notificat
   assert.equal(fixture.writes(), 0);
   assert.equal(fixture.afterTasks.length, 0);
   assert.equal(fixture.notifications.length, 0);
+});
+
+test('engine status notifications honor per-post unsubscribe for author and voters', async () => {
+  const fixture = statusEvents({ unsubscribed: ['author', 'voter'] });
+  assert.equal((await fixture.patch()).status, 200);
+  assert.equal(fixture.notifications.length, 0);
+  assert.equal(fixture.emails.length, 0);
+});
+
+test('concurrent requests to both status endpoints deliver one shared event', async () => {
+  const fixture = statusEvents();
+  const legacy = fixture.load('src/app/api/posts/[postId]/status/route.ts');
+  const responses = await Promise.all([
+    fixture.handlePatch(),
+    legacy.PATCH(new Request('https://app.example.test/post/status', {
+      method: 'PATCH', body: JSON.stringify({ statusId: 'cstatus0000000000000000001' }),
+    }), { params: Promise.resolve({ postId: 'cpost000000000000000000000' }) }),
+  ]);
+  await fixture.finishRequest();
+  assert.deepEqual(responses.map(response => response.status).sort(), [200, 409]);
+  assert.deepEqual(fixture.notifications.map(notification => notification.userId).sort(), ['author', 'voter']);
+  assert.equal(fixture.emails.length, 2);
 });

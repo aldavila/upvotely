@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { publicPostSelect } from '@/lib/public-payloads';
 import { authenticateApiKey } from '@/lib/api-auth';
 import { createPostSchema } from '@/lib/validators';
 import { z } from 'zod';
@@ -9,6 +10,14 @@ import { categorizeAndUpdatePost } from '@/lib/ai/categorize';
 import { analyzeAndUpdateSentiment } from '@/lib/ai/sentiment';
 import { createMergeSuggestions } from '@/lib/ai/similarity';
 import { notifyNewPost } from '@/lib/notifications/events';
+import { notifyPostCreated } from '@/lib/integrations/slack';
+
+const authenticatedPostInclude = {
+  author: { select: { id: true, name: true, image: true } },
+  status: true,
+  tags: true,
+  _count: { select: { votes: true, comments: true } },
+} as const satisfies Prisma.PostInclude;
 
 // Query params validation schema
 const getPostsQuerySchema = z.object({
@@ -57,7 +66,8 @@ export async function GET(req: Request): Promise<NextResponse> {
         return NextResponse.json({ error: 'Board not found' }, { status: 404 });
       }
     }
-    // No API key — public endpoint for reading posts (existing behavior)
+    const session = apiKeyResult ? null : await auth();
+    const isAuthenticated = !!apiKeyResult || !!session?.user?.id;
 
     // Build where clause with proper typing
     const where: Prisma.PostWhereInput = {
@@ -93,23 +103,11 @@ export async function GET(req: Request): Promise<NextResponse> {
         orderBy = { voteCount: 'desc' };
     }
 
+    const query = { where, orderBy, skip: (page - 1) * limit, take: limit };
     const [posts, total] = await Promise.all([
-      db.post.findMany({
-        where,
-        include: {
-          author: {
-            select: { id: true, name: true, image: true },
-          },
-          status: true,
-          tags: true,
-          _count: {
-            select: { votes: true, comments: true },
-          },
-        },
-        orderBy,
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
+      isAuthenticated
+        ? db.post.findMany({ ...query, include: authenticatedPostInclude })
+        : db.post.findMany({ ...query, select: publicPostSelect }),
       db.post.count({ where }),
     ]);
 
@@ -164,7 +162,10 @@ export async function POST(req: Request): Promise<NextResponse> {
     // Get the board and verify access
     const board = await db.board.findUnique({
       where: { id: validatedData.boardId },
-      include: { organization: true },
+      select: {
+        organizationId: true, allowAnonymous: true, requireApproval: true,
+        name: true, slug: true, organization: { select: { slug: true } },
+      },
     });
 
     if (!board) {
@@ -187,6 +188,7 @@ export async function POST(req: Request): Promise<NextResponse> {
         organizationId: board.organizationId,
         isDefault: true,
       },
+      select: { id: true },
     });
 
     if (!defaultStatus) {
@@ -199,33 +201,25 @@ export async function POST(req: Request): Promise<NextResponse> {
     // Sanitize input
     const sanitizedTitle = validatedData.title.trim();
     const sanitizedContent = validatedData.content.trim();
+    const isApproved = !board.requireApproval;
 
     // Create post with auto-upvote in a transaction to prevent race conditions
     const result = await db.$transaction(async (tx) => {
-      const post = await tx.post.create({
-        data: {
-          title: sanitizedTitle,
-          content: sanitizedContent,
-          boardId: validatedData.boardId,
-          authorId: (validatedData.isAnonymous || !userId) ? null : userId,
-          statusId: defaultStatus.id,
-          isAnonymous: validatedData.isAnonymous ?? (!userId),
-          isApproved: !board.requireApproval,
-          tags: validatedData.tagIds
-            ? { connect: validatedData.tagIds.map((id) => ({ id })) }
-            : undefined,
-        },
-        include: {
-          author: {
-            select: { id: true, name: true, image: true },
-          },
-          status: true,
-          tags: true,
-          _count: {
-            select: { votes: true, comments: true },
-          },
-        },
-      });
+      const data = {
+        title: sanitizedTitle,
+        content: sanitizedContent,
+        boardId: validatedData.boardId,
+        authorId: (validatedData.isAnonymous || !userId) ? null : userId,
+        statusId: defaultStatus.id,
+        isAnonymous: validatedData.isAnonymous ?? (!userId),
+        isApproved,
+        tags: validatedData.tagIds
+          ? { connect: validatedData.tagIds.map((id) => ({ id })) }
+          : undefined,
+      };
+      const post = apiKeyResult || userId
+        ? await tx.post.create({ data, include: authenticatedPostInclude })
+        : await tx.post.create({ data, select: publicPostSelect });
 
       // Auto-upvote by author if not anonymous and has userId
       if (userId && !validatedData.isAnonymous) {
@@ -246,7 +240,19 @@ export async function POST(req: Request): Promise<NextResponse> {
       return post;
     });
 
-    await notifyNewPost(result, board.organizationId, userId).catch(console.error);
+    await notifyNewPost({
+      id: result.id,
+      title: sanitizedTitle,
+      authorId: (validatedData.isAnonymous || !userId) ? null : userId,
+      isAnonymous: validatedData.isAnonymous ?? !userId,
+    }, board.organizationId, userId).catch(console.error);
+    if (isApproved) {
+      notifyPostCreated(board.organizationId, {
+        title: sanitizedTitle, content: sanitizedContent, boardName: board.name,
+        authorName: result.author?.name ?? null,
+        organizationSlug: board.organization.slug, boardSlug: board.slug,
+      }).catch(() => {});
+    }
 
     // Fire-and-forget: AI categorization, sentiment analysis, and duplicate detection
     categorizeAndUpdatePost(result.id, sanitizedTitle, sanitizedContent).catch(() => {});

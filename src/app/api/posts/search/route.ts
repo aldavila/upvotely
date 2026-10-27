@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { publicPostPreviewSelect, publicPostSuggestionSelect } from '@/lib/public-payloads';
 import { authenticateApiKey } from '@/lib/api-auth';
 import { z } from 'zod';
 
@@ -87,7 +88,7 @@ export async function GET(req: Request): Promise<NextResponse> {
     if (mode === 'autocomplete') {
       const posts = await db.post.findMany({
         where: whereClause,
-        select: { id: true, title: true, voteCount: true },
+        select: publicPostPreviewSelect,
         orderBy: { voteCount: 'desc' },
         take: limit,
       });
@@ -97,12 +98,7 @@ export async function GET(req: Request): Promise<NextResponse> {
     if (mode === 'suggestions') {
       const posts = await db.post.findMany({
         where: whereClause,
-        select: {
-          id: true,
-          title: true,
-          voteCount: true,
-          status: { select: { name: true, color: true, slug: true } },
-        },
+        select: publicPostSuggestionSelect,
         orderBy: { voteCount: 'desc' },
         take: limit,
       });

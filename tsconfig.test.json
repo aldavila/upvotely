@@ -7,7 +7,37 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "rootDir": ".",
-    "outDir": ".test-dist"
+    "outDir": ".test-dist",
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "types": [
+      "node"
+    ],
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    }
   },
-  "include": ["tests/**/*.ts", "src/lib/notifications/template.ts", "src/lib/notifications/preferences.ts"]
+  "include": [
+    "src/lib/webhook-*.ts",
+    "tests/**/*.ts",
+    "src/lib/slack-security.ts",
+    "src/lib/github-security.ts",
+    "src/lib/integrations/github.ts",
+    "src/app/api/integrations/github/**/*.ts",
+    "src/app/(dashboard)/dashboard/settings/integrations/github/page.tsx",
+    "tests/github.test.ts",
+    "src/lib/status-notification-policy.ts",
+    "src/lib/unsubscribe-token.ts",
+    "src/lib/linear-*.ts",
+    "src/lib/integrations/linear.ts",
+    "src/app/api/integrations/linear/**/*.ts",
+    "src/app/(dashboard)/dashboard/settings/integrations/linear/page.tsx",
+    "src/lib/notifications/template.ts",
+    "src/lib/notifications/preferences.ts"
+  ]
 }
