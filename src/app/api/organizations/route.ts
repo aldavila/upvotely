@@ -25,6 +25,7 @@ export async function GET(): Promise<NextResponse> {
     return NextResponse.json(
       memberships.map((m) => ({
         ...m.organization,
+        webhookSecret: undefined,
         role: m.role,
       }))
     );
