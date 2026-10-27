@@ -161,7 +161,10 @@ export async function POST(req: Request): Promise<NextResponse> {
     // Get the board and verify access
     const board = await db.board.findUnique({
       where: { id: validatedData.boardId },
-      select: { organizationId: true, allowAnonymous: true, requireApproval: true },
+      select: {
+        organizationId: true, allowAnonymous: true, requireApproval: true,
+        name: true, slug: true, organization: { select: { slug: true } },
+      },
     });
 
     if (!board) {
@@ -197,6 +200,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     // Sanitize input
     const sanitizedTitle = validatedData.title.trim();
     const sanitizedContent = validatedData.content.trim();
+    const isApproved = !board.requireApproval;
 
     // Create post with auto-upvote in a transaction to prevent race conditions
     const result = await db.$transaction(async (tx) => {
@@ -207,7 +211,7 @@ export async function POST(req: Request): Promise<NextResponse> {
         authorId: (validatedData.isAnonymous || !userId) ? null : userId,
         statusId: defaultStatus.id,
         isAnonymous: validatedData.isAnonymous ?? (!userId),
-        isApproved: !board.requireApproval,
+        isApproved,
         tags: validatedData.tagIds
           ? { connect: validatedData.tagIds.map((id) => ({ id })) }
           : undefined,
@@ -235,9 +239,9 @@ export async function POST(req: Request): Promise<NextResponse> {
       return post;
     });
 
-    if (result.isApproved) {
+    if (isApproved) {
       notifyPostCreated(board.organizationId, {
-        title: result.title, content: result.content, boardName: board.name,
+        title: sanitizedTitle, content: sanitizedContent, boardName: board.name,
         authorName: result.author?.name ?? null,
         organizationSlug: board.organization.slug, boardSlug: board.slug,
       }).catch(() => {});
