@@ -357,6 +357,26 @@
   "integrations": {
     "title": "Integraciones",
     "description": "Conecta tus herramientas con Upvotely",
+    "github": {
+      "title": "GitHub",
+      "description": "Crea issues y sincroniza estado con GitHub",
+      "accessToken": "Token de Acceso Personal",
+      "accessTokenDescription": "PAT de GitHub con scope repo",
+      "owner": "Propietario del Repositorio",
+      "repo": "Nombre del Repositorio",
+      "defaultLabels": "Etiquetas Predeterminadas",
+      "defaultLabelsDescription": "Etiquetas para agregar a todos los issues creados (separadas por coma)",
+      "createIssue": "Crear Issue en GitHub",
+      "issueCreated": "Issue de GitHub creado exitosamente",
+      "issueFailed": "Error al crear issue de GitHub",
+      "linkedIssue": "Issue de GitHub Vinculado",
+      "viewOnGitHub": "Ver en GitHub",
+      "connected": "Conectado",
+      "disconnected": "No Conectado",
+      "save": "Guardar Configuración",
+      "webhookUrl": "URL del Webhook",
+      "webhookUrlDescription": "Agrega esta URL en la configuración de webhooks de tu repositorio"
+    },
     "slack": {
       "title": "Slack",
       "description": "Envía notificaciones y crea feedback desde Slack",
