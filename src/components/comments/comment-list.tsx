@@ -16,20 +16,12 @@ import {
 } from 'lucide-react';
 import { formatRelativeTime } from '@/lib/utils';
 
-interface CommentAuthor {
-  id: string;
-  name: string | null;
-  image: string | null;
-}
+import type { PublicComment } from '@/lib/public-payloads';
 
-interface Comment {
-  id: string;
-  content: string;
-  isInternal: boolean;
+type Comment = Omit<PublicComment, 'createdAt'> & {
   createdAt: string;
-  author: CommentAuthor;
   replies?: Comment[];
-}
+};
 
 interface CommentListProps {
   postId: string;
