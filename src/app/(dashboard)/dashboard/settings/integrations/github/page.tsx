@@ -13,6 +13,7 @@ interface GitHubConfig {
   owner: string;
   repo: string;
   defaultLabels: string[];
+  webhookSecret?: string;
 }
 
 export default function GitHubIntegrationPage() {
@@ -52,7 +53,11 @@ export default function GitHubIntegrationPage() {
           defaultLabels: labelsInput.split(',').map((l) => l.trim()).filter(Boolean),
         }),
       });
-      if (res.ok) setIsConnected(true);
+      if (res.ok) {
+        const data = await res.json();
+        setConfig({ ...data.integration.config, accessToken: '' });
+        setIsConnected(true);
+      }
     } finally {
       setSaving(false);
     }
@@ -98,6 +103,10 @@ export default function GitHubIntegrationPage() {
           <CardDescription>Configure your GitHub repository connection</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Existing exports keep their original issue link when the repository changes.
+            Status sync only follows the currently configured repository.
+          </p>
           <div className="space-y-2">
             <Label htmlFor="accessToken">Personal Access Token</Label>
             <Input
@@ -146,12 +155,22 @@ export default function GitHubIntegrationPage() {
           <CardTitle>Webhook URL</CardTitle>
           <CardDescription>Add this URL to your GitHub repository webhook settings to sync issue status</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <div className="flex items-center gap-2">
             <Input value={webhookUrl} readOnly className="font-mono text-sm" />
             <Button variant="outline" size="icon" onClick={() => navigator.clipboard.writeText(webhookUrl)}>
               <Copy className="h-4 w-4" />
             </Button>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="webhookSecret">Webhook Secret</Label>
+            <Input id="webhookSecret" value={config.webhookSecret || ''} readOnly className="font-mono text-sm" />
+            <p className="text-xs text-muted-foreground">
+              Save the configuration to generate a secret, then copy it into this repository’s
+              GitHub webhook Secret field. Select application/json and Issues events.
+              Each save rotates the secret; update the GitHub webhook after saving.
+              Existing connections must be saved once to enable webhook authentication.
+            </p>
           </div>
         </CardContent>
       </Card>

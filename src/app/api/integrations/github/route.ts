@@ -2,12 +2,17 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { z } from 'zod';
+import { randomBytes } from 'node:crypto';
+import { githubRepository } from '@/lib/github-security';
 
 const githubConfigSchema = z.object({
   accessToken: z.string().min(1),
   owner: z.string().min(1),
   repo: z.string().min(1),
   defaultLabels: z.array(z.string()).optional(),
+}).refine((config) => githubRepository(config.owner, config.repo) !== null, {
+  message: 'Invalid GitHub owner or repository',
+  path: ['repo'],
 });
 
 export async function GET(): Promise<NextResponse> {
@@ -57,13 +62,18 @@ export async function POST(req: Request): Promise<NextResponse> {
       return NextResponse.json({ error: 'Invalid input', details: parseResult.error.issues }, { status: 400 });
     }
 
+    const config = {
+      ...parseResult.data,
+      repository: githubRepository(parseResult.data.owner, parseResult.data.repo)!,
+      webhookSecret: randomBytes(32).toString('hex'),
+    };
     const integration = await db.integration.upsert({
       where: { organizationId_type: { organizationId: membership.organizationId, type: 'github' } },
-      create: { organizationId: membership.organizationId, type: 'github', config: parseResult.data, isActive: true },
-      update: { config: parseResult.data, isActive: true },
+      create: { organizationId: membership.organizationId, type: 'github', config, isActive: true },
+      update: { config, isActive: true },
     });
 
-    return NextResponse.json({ integration }, { status: 201 });
+    return NextResponse.json({ integration: { ...integration, config: { ...config, accessToken: undefined } } }, { status: 201 });
   } catch (error) {
     console.error('Save GitHub integration error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

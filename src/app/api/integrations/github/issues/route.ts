@@ -7,6 +7,10 @@ import { githubPostWhere } from '@/lib/github-security';
 
 const createIssueSchema = z.object({
   postId: z.string().cuid(),
+  resolvePending: z.object({
+    issueNumber: z.number().int().positive().nullable(),
+    confirmed: z.literal(true),
+  }).optional(),
 });
 
 export async function POST(req: Request): Promise<NextResponse> {
@@ -46,7 +50,8 @@ export async function POST(req: Request): Promise<NextResponse> {
         title: post.title,
         body: `${post.content}\n\n**Status:** ${post.status.name}\n**Votes:** ${post.voteCount}\n**Board:** ${post.board.name}`,
         labels: post.tags.map((t) => t.name),
-      }
+      },
+      parseResult.data.resolvePending
     );
 
     if (!result) {
