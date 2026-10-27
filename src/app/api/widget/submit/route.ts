@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { z } from 'zod';
+import { notifyPostCreated } from '@/lib/integrations/slack';
 
 // Validation schema for widget submissions
 const widgetSubmitSchema = z.object({
@@ -88,6 +89,13 @@ export async function POST(req: Request): Promise<NextResponse> {
         isApproved: !board.requireApproval,
       },
     });
+
+    if (post.isApproved) {
+      notifyPostCreated(board.organizationId, {
+        title: post.title, content: post.content, boardName: board.name,
+        authorName: null, organizationSlug: board.organization.slug, boardSlug: board.slug,
+      }).catch(() => {});
+    }
 
     return NextResponse.json({
       success: true,

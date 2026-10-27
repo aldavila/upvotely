@@ -11,69 +11,69 @@
     "sort": "Ordenar",
     "submit": "Enviar",
     "close": "Cerrar",
-    "back": "Atr\u00e1s",
+    "back": "Atrás",
     "next": "Siguiente",
     "previous": "Anterior",
-    "yes": "S\u00ed",
+    "yes": "Sí",
     "no": "No",
     "or": "o",
     "and": "y",
     "all": "Todos",
     "none": "Ninguno",
-    "more": "M\u00e1s",
+    "more": "Más",
     "less": "Menos",
     "viewAll": "Ver Todo",
-    "learnMore": "Saber M\u00e1s"
+    "learnMore": "Saber Más"
   },
   "auth": {
-    "signIn": "Iniciar Sesi\u00f3n",
-    "signOut": "Cerrar Sesi\u00f3n",
+    "signIn": "Iniciar Sesión",
+    "signOut": "Cerrar Sesión",
     "signUp": "Registrarse",
-    "email": "Correo Electr\u00f3nico",
-    "password": "Contrase\u00f1a",
-    "confirmPassword": "Confirmar Contrase\u00f1a",
-    "forgotPassword": "\u00bfOlvidaste tu contrase\u00f1a?",
-    "resetPassword": "Restablecer Contrase\u00f1a",
+    "email": "Correo Electrónico",
+    "password": "Contraseña",
+    "confirmPassword": "Confirmar Contraseña",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "resetPassword": "Restablecer Contraseña",
     "continueWith": "Continuar con {provider}",
     "orContinueWith": "O continuar con",
-    "noAccount": "\u00bfNo tienes cuenta?",
-    "haveAccount": "\u00bfYa tienes cuenta?",
+    "noAccount": "¿No tienes cuenta?",
+    "haveAccount": "¿Ya tienes cuenta?",
     "createAccount": "Crear Cuenta",
     "welcomeBack": "Bienvenido de nuevo",
-    "signInDescription": "Inicia sesi\u00f3n en tu cuenta para continuar"
+    "signInDescription": "Inicia sesión en tu cuenta para continuar"
   },
   "landing": {
     "hero": {
-      "title": "Gesti\u00f3n de feedback que crece contigo, no en tu contra",
+      "title": "Gestión de feedback que crece contigo, no en tu contra",
       "subtitle": "Recolecta, organiza y prioriza el feedback de tu producto con precios fijos. Sin cargos por usuario. Sin facturas sorpresa. Solo mejores productos.",
       "cta": "Empieza Gratis Hoy",
-      "ctaSecondary": "Ver C\u00f3mo Funciona"
+      "ctaSecondary": "Ver Cómo Funciona"
     },
     "features": {
       "title": "Todo lo que necesitas para construir mejores productos",
-      "subtitle": "Todas las funciones que esperar\u00edas, sin la complejidad que no.",
+      "subtitle": "Todas las funciones que esperarías, sin la complejidad que no.",
       "feedbackBoards": {
         "title": "Tableros de Feedback",
-        "description": "Recolecta y organiza solicitudes de funciones con votaci\u00f3n, etiquetas y b\u00fasqueda potentes."
+        "description": "Recolecta y organiza solicitudes de funciones con votación, etiquetas y búsqueda potentes."
       },
       "roadmap": {
-        "title": "Roadmap P\u00fablico",
-        "description": "Mant\u00e9n informados a tus usuarios con un roadmap hermoso e interactivo que realmente usar\u00e1n."
+        "title": "Roadmap Público",
+        "description": "Mantén informados a tus usuarios con un roadmap hermoso e interactivo que realmente usarán."
       },
       "changelog": {
         "title": "Changelog",
         "description": "Anuncia actualizaciones y cierra el ciclo de feedback. Muestra que la voz del usuario importa."
       },
       "analytics": {
-        "title": "Anal\u00edticas",
+        "title": "Analíticas",
         "description": "Entiende lo que tus usuarios realmente quieren con insights y tendencias potentes."
       },
       "integrations": {
         "title": "Integraciones",
-        "description": "Conecta con Slack, Jira, Linear, GitHub y m\u00e1s. Todo incluido, sin ventas adicionales."
+        "description": "Conecta con Slack, Jira, Linear, GitHub y más. Todo incluido, sin ventas adicionales."
       },
       "customization": {
-        "title": "Personalizaci\u00f3n",
+        "title": "Personalización",
         "description": "Adapta tu marca con colores, logos personalizados e incluso tu propio dominio."
       }
     },
@@ -88,8 +88,8 @@
         "features": [
           "1 tablero de feedback",
           "Usuarios ilimitados",
-          "Roadmap p\u00fablico",
-          "Anal\u00edticas b\u00e1sicas",
+          "Roadmap público",
+          "Analíticas básicas",
           "Soporte comunitario"
         ]
       },
@@ -117,19 +117,19 @@
           "Usuarios ilimitados",
           "Dominio personalizado",
           "Acceso API",
-          "Anal\u00edticas avanzadas",
+          "Analíticas avanzadas",
           "SSO listo",
           "Soporte dedicado"
         ]
       }
     },
     "comparison": {
-      "title": "Por qu\u00e9 los equipos cambian de Canny",
-      "subtitle": "Mira c\u00f3mo Upvotely se compara con la competencia"
+      "title": "Por qué los equipos cambian de Canny",
+      "subtitle": "Mira cómo Upvotely se compara con la competencia"
     },
     "cta": {
-      "title": "\u00bfListo para construir mejores productos?",
-      "subtitle": "\u00danete a miles de equipos usando Upvotely para recolectar y priorizar feedback.",
+      "title": "¿Listo para construir mejores productos?",
+      "subtitle": "Únete a miles de equipos usando Upvotely para recolectar y priorizar feedback.",
       "button": "Empieza Gratis"
     }
   },
@@ -139,9 +139,9 @@
     "boards": "Tableros",
     "roadmap": "Roadmap",
     "changelog": "Changelog",
-    "analytics": "Anal\u00edticas",
+    "analytics": "Analíticas",
     "team": "Equipo",
-    "settings": "Configuraci\u00f3n",
+    "settings": "Configuración",
     "stats": {
       "totalPosts": "Total de Posts",
       "totalVotes": "Total de Votos",
@@ -152,33 +152,33 @@
   "boards": {
     "title": "Tableros de Feedback",
     "create": "Crear Tablero",
-    "empty": "A\u00fan no hay tableros",
+    "empty": "Aún no hay tableros",
     "emptyDescription": "Crea tu primer tablero de feedback para empezar a recolectar feedback.",
-    "settings": "Configuraci\u00f3n del Tablero",
+    "settings": "Configuración del Tablero",
     "name": "Nombre del Tablero",
-    "description": "Descripci\u00f3n",
+    "description": "Descripción",
     "slug": "Slug URL",
-    "isPublic": "Tablero P\u00fablico",
-    "allowAnonymous": "Permitir Votaci\u00f3n An\u00f3nima",
-    "requireApproval": "Requerir Aprobaci\u00f3n"
+    "isPublic": "Tablero Público",
+    "allowAnonymous": "Permitir Votación Anónima",
+    "requireApproval": "Requerir Aprobación"
   },
   "posts": {
     "title": "Feedback",
     "create": "Nuevo Post",
-    "empty": "A\u00fan no hay feedback",
-    "emptyDescription": "\u00a1S\u00e9 el primero en compartir tu idea!",
-    "postTitle": "T\u00edtulo",
-    "postContent": "Descripci\u00f3n",
+    "empty": "Aún no hay feedback",
+    "emptyDescription": "¡Sé el primero en compartir tu idea!",
+    "postTitle": "Título",
+    "postContent": "Descripción",
     "votes": "{count, plural, =0 {0 votos} =1 {1 voto} other {# votos}}",
     "comments": "{count, plural, =0 {0 comentarios} =1 {1 comentario} other {# comentarios}}",
     "sortBy": {
-      "votes": "M\u00e1s Votados",
-      "newest": "M\u00e1s Recientes",
+      "votes": "Más Votados",
+      "newest": "Más Recientes",
       "trending": "Tendencias"
     },
     "status": {
       "open": "Abierto",
-      "under_review": "En Revisi\u00f3n",
+      "under_review": "En Revisión",
       "planned": "Planeado",
       "in_progress": "En Progreso",
       "complete": "Completado",
@@ -187,70 +187,70 @@
   },
   "roadmap": {
     "title": "Roadmap",
-    "empty": "Nada en el roadmap a\u00fan",
-    "emptyDescription": "Los posts aparecer\u00e1n aqu\u00ed cuando se marquen como Planeado o En Progreso."
+    "empty": "Nada en el roadmap aún",
+    "emptyDescription": "Los posts aparecerán aquí cuando se marquen como Planeado o En Progreso."
   },
   "changelog": {
     "title": "Changelog",
     "create": "Nueva Entrada",
-    "empty": "A\u00fan no hay actualizaciones",
-    "emptyDescription": "Las entradas del changelog aparecer\u00e1n aqu\u00ed cuando se publiquen.",
+    "empty": "Aún no hay actualizaciones",
+    "emptyDescription": "Las entradas del changelog aparecerán aquí cuando se publiquen.",
     "types": {
-      "feature": "Nueva Funci\u00f3n",
+      "feature": "Nueva Función",
       "improvement": "Mejora",
-      "fix": "Correcci\u00f3n",
+      "fix": "Corrección",
       "other": "Otro"
     }
   },
   "settings": {
-    "title": "Configuraci\u00f3n",
-    "organization": "Organizaci\u00f3n",
-    "billing": "Facturaci\u00f3n",
+    "title": "Configuración",
+    "organization": "Organización",
+    "billing": "Facturación",
     "branding": "Marca",
     "domain": "Dominio Personalizado",
     "integrations": "Integraciones",
     "api": "Claves API",
     "danger": "Zona de Peligro",
-    "deleteOrg": "Eliminar Organizaci\u00f3n",
-    "cancelSubscription": "Cancelar Suscripci\u00f3n"
+    "deleteOrg": "Eliminar Organización",
+    "cancelSubscription": "Cancelar Suscripción"
   },
   "conversationFeedback": {
     "title": "Feedback de Conversaciones",
-    "description": "Rastrea la satisfacci\u00f3n en las conversaciones con clientes",
-    "satisfactionRate": "Tasa de Satisfacci\u00f3n",
+    "description": "Rastrea la satisfacción en las conversaciones con clientes",
+    "satisfactionRate": "Tasa de Satisfacción",
     "totalConversations": "Total de Conversaciones",
     "positiveRating": "Positivo",
     "negativeRating": "Negativo",
     "byAgent": "Por Agente",
     "negativeThemes": "Temas de Feedback Negativo",
     "dailyTrend": "Tendencia Diaria",
-    "empty": "A\u00fan no hay feedback de conversaciones",
-    "emptyDescription": "Usa la API para enviar feedback por conversaci\u00f3n.",
+    "empty": "Aún no hay feedback de conversaciones",
+    "emptyDescription": "Usa la API para enviar feedback por conversación.",
     "period": {
-      "7d": "\u00daltimos 7 d\u00edas",
-      "30d": "\u00daltimos 30 d\u00edas",
-      "90d": "\u00daltimos 90 d\u00edas"
+      "7d": "Últimos 7 días",
+      "30d": "Últimos 30 días",
+      "90d": "Últimos 90 días"
     }
   },
   "prioritization": {
-    "title": "Priorizaci\u00f3n por Ingresos",
+    "title": "Priorización por Ingresos",
     "description": "Solicitudes de funciones ordenadas por MRR de clientes solicitantes",
     "totalCustomers": "Total de Clientes",
     "totalMrrTracked": "MRR Total Rastreado",
     "revenueLinkedPosts": "Posts Vinculados a Ingresos",
     "prioritizedRequests": "Solicitudes Priorizadas",
-    "sortedByScore": "Ordenadas por puntuaci\u00f3n de prioridad (MRR x cantidad de clientes)",
-    "empty": "A\u00fan no hay posts. Usa la API de Identificaci\u00f3n para vincular clientes a solicitudes.",
-    "score": "Puntuaci\u00f3n",
+    "sortedByScore": "Ordenadas por puntuación de prioridad (MRR x cantidad de clientes)",
+    "empty": "Aún no hay posts. Usa la API de Identificación para vincular clientes a solicitudes.",
+    "score": "Puntuación",
     "rank": "Rango"
   },
   "customers": {
     "title": "Clientes",
     "identify": "Identificar Cliente",
-    "empty": "A\u00fan no hay clientes",
-    "emptyDescription": "Usa la API de Identificaci\u00f3n para sincronizar tus clientes y sus datos de ingresos.",
+    "empty": "Aún no hay clientes",
+    "emptyDescription": "Usa la API de Identificación para sincronizar tus clientes y sus datos de ingresos.",
     "name": "Nombre",
-    "email": "Correo Electr\u00f3nico",
+    "email": "Correo Electrónico",
     "company": "Empresa",
     "mrr": "MRR",
     "plan": "Plan",
@@ -260,7 +260,7 @@
   },
   "comments": {
     "title": "Comentarios",
-    "empty": "A\u00fan no hay comentarios. \u00a1S\u00e9 el primero en comentar!",
+    "empty": "Aún no hay comentarios. ¡Sé el primero en comentar!",
     "writeComment": "Escribe un comentario...",
     "writeReply": "Escribe una respuesta...",
     "postComment": "Publicar Comentario",
@@ -270,45 +270,45 @@
     "internalNote": "Nota interna",
     "internalOnly": "Solo visible para miembros del equipo",
     "showInternal": "Mostrar notas internas",
-    "signInToComment": "Inicia sesi\u00f3n para dejar un comentario."
+    "signInToComment": "Inicia sesión para dejar un comentario."
   },
   "aiCategorization": {
-    "title": "Categor\u00eda IA",
+    "title": "Categoría IA",
     "tags": "Etiquetas IA",
     "categorizing": "Categorizando...",
     "categories": {
       "bug": "Error",
-      "feature": "Solicitud de Funci\u00f3n",
+      "feature": "Solicitud de Función",
       "ux": "Mejora de UX",
       "performance": "Rendimiento",
-      "integration": "Integraci\u00f3n",
-      "docs": "Documentaci\u00f3n",
+      "integration": "Integración",
+      "docs": "Documentación",
       "other": "Otro"
     },
-    "filterByCategory": "Filtrar por categor\u00eda IA"
+    "filterByCategory": "Filtrar por categoría IA"
   },
   "sentiment": {
     "title": "Sentimiento",
     "positive": "Positivo",
     "neutral": "Neutral",
     "negative": "Negativo",
-    "score": "Puntuaci\u00f3n de Sentimiento",
-    "distribution": "Distribuci\u00f3n de Sentimiento",
+    "score": "Puntuación de Sentimiento",
+    "distribution": "Distribución de Sentimiento",
     "analyzing": "Analizando...",
     "weekly": "Sentimiento Semanal"
   },
   "duplicateDetection": {
-    "title": "Sugerencias de Fusi\u00f3n",
+    "title": "Sugerencias de Fusión",
     "similarPosts": "Posts Similares",
     "similarity": "Similitud",
     "accept": "Aceptar",
     "dismiss": "Descartar",
-    "noSuggestions": "Sin sugerencias de fusi\u00f3n",
-    "mergeDescription": "Estos posts parecen similares y podr\u00edan fusionarse"
+    "noSuggestions": "Sin sugerencias de fusión",
+    "mergeDescription": "Estos posts parecen similares y podrían fusionarse"
   },
   "similarSuggestions": {
     "title": "Solicitudes existentes similares",
-    "didYouMean": "\u00bfQuisiste decir alguna de estas?",
+    "didYouMean": "¿Quisiste decir alguna de estas?",
     "noneMatch": "Ninguna de estas coincide",
     "viewAndVote": "Ver y Votar",
     "searching": "Buscando..."
@@ -321,26 +321,50 @@
   },
   "trends": {
     "title": "Tendencias",
-    "description": "Qu\u00e9 est\u00e1 pasando con tu feedback",
-    "thisWeek": "\u00daltimos 7 d\u00edas",
-    "thisMonth": "\u00daltimos 30 d\u00edas",
-    "thisQuarter": "\u00daltimos 90 d\u00edas",
+    "description": "Qué está pasando con tu feedback",
+    "thisWeek": "Últimos 7 días",
+    "thisMonth": "Últimos 30 días",
+    "thisQuarter": "Últimos 90 días",
     "newPosts": "Nuevos Posts",
     "voteVelocity": "Total de Votos",
-    "topVoted": "M\u00e1s Votados",
-    "mostDiscussed": "M\u00e1s Discutidos",
-    "statusDistribution": "Distribuci\u00f3n por Estado",
+    "topVoted": "Más Votados",
+    "mostDiscussed": "Más Discutidos",
+    "statusDistribution": "Distribución por Estado",
     "feedbackVolume": "Volumen de Feedback",
-    "postsPerDay": "por d\u00eda promedio",
-    "avgPostsPerDay": "Posts/D\u00eda Promedio",
-    "mostActiveBoard": "Tablero M\u00e1s Activo",
-    "noPosts": "Sin posts en este per\u00edodo",
-    "noDiscussions": "Sin discusiones en este per\u00edodo"
+    "postsPerDay": "por día promedio",
+    "avgPostsPerDay": "Posts/Día Promedio",
+    "mostActiveBoard": "Tablero Más Activo",
+    "noPosts": "Sin posts en este período",
+    "noDiscussions": "Sin discusiones en este período"
   },
   "errors": {
-    "generic": "Algo sali\u00f3 mal. Por favor intenta de nuevo.",
-    "notFound": "P\u00e1gina no encontrada",
+    "generic": "Algo salió mal. Por favor intenta de nuevo.",
+    "notFound": "Página no encontrada",
     "unauthorized": "No tienes permiso para acceder a esto.",
     "validation": "Por favor revisa tu entrada e intenta de nuevo."
+  },
+  "integrations": {
+    "title": "Integraciones",
+    "description": "Conecta tus herramientas con Upvotely",
+    "slack": {
+      "title": "Slack",
+      "description": "Envía notificaciones y crea feedback desde Slack",
+      "webhookUrl": "URL del Webhook",
+      "webhookUrlDescription": "Tu URL de Incoming Webhook de Slack",
+      "channel": "Canal",
+      "channelDescription": "Canal predeterminado para notificaciones (opcional)",
+      "teamId": "ID del Equipo",
+      "teamIdDescription": "ID del equipo de tu espacio de trabajo de Slack (para comandos)",
+      "notifyOnNewPost": "Notificaciones de nuevos posts",
+      "notifyOnStatusChange": "Notificaciones de cambio de estado",
+      "notifyOnVoteMilestone": "Notificaciones de hitos de votos",
+      "connected": "Conectado",
+      "disconnected": "Desconectado",
+      "connect": "Conectar",
+      "disconnect": "Desconectar",
+      "save": "Guardar Configuración",
+      "connectionSuccess": "¡Conectado exitosamente a Slack!",
+      "connectionFailed": "Error al conectar con Slack"
+    }
   }
 }
