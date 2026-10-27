@@ -11,11 +11,25 @@
     "lib": [
       "ES2022",
       "DOM"
-    ]
+    ],
+    "types": [
+      "node"
+    ],
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    }
   },
   "include": [
     "src/lib/webhook-*.ts",
     "tests/**/*.ts",
-    "src/lib/slack-security.ts"
+    "src/lib/slack-security.ts",
+    "src/lib/github-security.ts",
+    "src/lib/integrations/github.ts",
+    "src/app/api/integrations/github/**/*.ts",
+    "src/app/(dashboard)/dashboard/settings/integrations/github/page.tsx",
+    "tests/github.test.ts"
   ]
 }
