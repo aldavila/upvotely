@@ -44,9 +44,9 @@ next-env.d.ts
 *.swp
 *.swo
 
-# Prisma
-prisma/migrations
-
 # Logs
 logs
 *.log
+
+# Database schema is managed with prisma db push
+prisma/migrations

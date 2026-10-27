@@ -16,6 +16,7 @@ import {
   MessageCircle,
   DollarSign,
   TrendingUp,
+  Plug,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -38,6 +39,7 @@ const navigation = [
 ];
 
 const bottomNavigation = [
+  { name: 'Integrations', href: '/dashboard/settings/integrations', icon: Plug },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
   { name: 'Help', href: '/docs', icon: HelpCircle },
 ];

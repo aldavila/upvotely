@@ -7,7 +7,15 @@
     "rootDir": ".",
     "strict": true,
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "lib": [
+      "ES2022",
+      "DOM"
+    ]
   },
-  "include": ["src/lib/webhook-*.ts", "tests/**/*.ts"]
+  "include": [
+    "src/lib/webhook-*.ts",
+    "tests/**/*.ts",
+    "src/lib/slack-security.ts"
+  ]
 }

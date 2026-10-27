@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { db } from '@/lib/db';
+import { publicChangelogSelect, publicOrganizationSelect } from '@/lib/public-payloads';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CHANGELOG_TYPES, formatDate } from '@/lib/utils';
@@ -16,6 +17,7 @@ interface PageProps {
 async function getChangelog(orgSlug: string) {
   const organization = await db.organization.findUnique({
     where: { slug: orgSlug },
+    select: publicOrganizationSelect,
   });
 
   if (!organization) return null;
@@ -25,15 +27,7 @@ async function getChangelog(orgSlug: string) {
       organizationId: organization.id,
       isPublished: true,
     },
-    include: {
-      linkedPosts: {
-        select: {
-          id: true,
-          title: true,
-          board: { select: { slug: true } },
-        },
-      },
-    },
+    select: publicChangelogSelect,
     orderBy: { publishedAt: 'desc' },
   });
 

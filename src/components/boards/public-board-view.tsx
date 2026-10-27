@@ -40,46 +40,14 @@ import { formatRelativeTime, getInitials } from '@/lib/utils';
 import { SearchAutocomplete } from '@/components/boards/search-autocomplete';
 import { useDebounce } from '@/hooks/use-debounce';
 
-interface Post {
-  id: string;
-  title: string;
-  content: string;
-  voteCount: number;
-  isAnonymous: boolean;
-  createdAt: Date;
-  author: { id: string; name: string | null; image: string | null } | null;
-  status: { id: string; name: string; color: string; slug: string };
-  tags: { id: string; name: string; color: string }[];
-  _count: { votes: number; comments: number };
-}
-
-interface Status {
-  id: string;
-  name: string;
-  slug: string;
-  color: string;
-}
+import type { PublicBoard, PublicPost, PublicStatus, PublicUser } from '@/lib/public-payloads';
 
 interface PublicBoardViewProps {
-  board: {
-    id: string;
-    name: string;
-    description: string | null;
-    slug: string;
-    allowAnonymous: boolean;
-    organization: {
-      id: string;
-      name: string;
-      slug: string;
-      primaryColor: string;
-      showBranding: boolean;
-    };
-    tags: { id: string; name: string; color: string }[];
-  };
-  posts: Post[];
-  statuses: Status[];
+  board: PublicBoard;
+  posts: PublicPost[];
+  statuses: PublicStatus[];
   userVotes: string[];
-  user?: { id?: string; name?: string | null; image?: string | null } | null;
+  user?: PublicUser | null;
   currentStatus?: string;
   currentSort?: string;
   searchQuery?: string;
