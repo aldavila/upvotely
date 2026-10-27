@@ -6,23 +6,20 @@ import { closeSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync, writ
 import { join } from 'node:path';
 import { loadSource } from './load-source';
 
-test('db-push deployment reaches next build without deploying incremental migrations', () => {
+test('build generates Prisma client before next build without deploying migrations', () => {
   mkdirSync('/tmp/upvotely-r2', { recursive: true });
   const dir = mkdtempSync('/tmp/upvotely-r2/deploy-');
   const output = openSync(join(dir, 'output'), 'w');
   try {
     // Run the real build script with offline process doubles. This project has
-    // no migration baseline: migrate deploy must remain a no-op on both fresh
-    // and db-push-managed databases. Never start Prisma or access a database.
+    // no migration baseline: builds must not deploy migrations or access a
+    // database. Never start the real Prisma or Next.js processes.
     writeFileSync(join(dir, 'prisma'), `#!${process.execPath}
 const fs = require('node:fs');
 const assert = require('node:assert/strict');
 const args = process.argv.slice(2).join(' ');
 fs.appendFileSync(${JSON.stringify(join(dir, 'calls'))}, args + '\\n');
-if (args === 'migrate deploy') {
-  const files = fs.existsSync('prisma/migrations') ? fs.readdirSync('prisma/migrations', { recursive: true }) : [];
-  assert.equal(files.filter(file => file.endsWith('.sql')).length, 0, 'db-push deployments must not discover unbaselined SQL migrations');
-} else assert.equal(args, 'generate');
+assert.equal(args, 'generate', 'build must only generate the Prisma client');
 `, { mode: 0o755 });
     writeFileSync(join(dir, 'next'), `#!${process.execPath}
 require('node:assert/strict').deepEqual(process.argv.slice(2), ['build']);
@@ -30,7 +27,7 @@ require('node:fs').appendFileSync(${JSON.stringify(join(dir, 'calls'))}, 'next b
 `, { mode: 0o755 });
     const build = JSON.parse(readFileSync('package.json', 'utf8')).scripts.build;
     execFileSync('/bin/sh', ['-c', build], { env: { PATH: dir, NODE_ENV: 'test' }, stdio: ['ignore', output, output] });
-    assert.equal(readFileSync(join(dir, 'calls'), 'utf8'), 'generate\nmigrate deploy\nnext build\n');
+    assert.equal(readFileSync(join(dir, 'calls'), 'utf8'), 'generate\nnext build\n');
     execFileSync('git', ['check-ignore', '--quiet', '--no-index', 'prisma/migrations/future/migration.sql'], { stdio: ['ignore', output, output] });
   } catch (error) {
     throw new Error(readFileSync(join(dir, 'output'), 'utf8'), { cause: error });

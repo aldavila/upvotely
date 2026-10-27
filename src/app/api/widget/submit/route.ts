@@ -35,7 +35,10 @@ export async function POST(req: Request): Promise<NextResponse> {
     if (boardId) {
       board = await db.board.findUnique({
         where: { id: boardId },
-        select: { id: true, organizationId: true, isPublic: true, requireApproval: true },
+        select: {
+          id: true, organizationId: true, isPublic: true, requireApproval: true,
+          name: true, slug: true, organization: { select: { slug: true } },
+        },
       });
     } else if (organizationSlug && boardSlug) {
       const organization = await db.organization.findUnique({
@@ -51,7 +54,10 @@ export async function POST(req: Request): Promise<NextResponse> {
               slug: boardSlug,
             },
           },
-          select: { id: true, organizationId: true, isPublic: true, requireApproval: true },
+          select: {
+            id: true, organizationId: true, isPublic: true, requireApproval: true,
+            name: true, slug: true, organization: { select: { slug: true } },
+          },
         });
       }
     }
@@ -95,7 +101,7 @@ export async function POST(req: Request): Promise<NextResponse> {
 
     if (post.isApproved) {
       notifyPostCreated(board.organizationId, {
-        title: post.title, content: post.content, boardName: board.name,
+        title, content, boardName: board.name,
         authorName: null, organizationSlug: board.organization.slug, boardSlug: board.slug,
       }).catch(() => {});
     }
