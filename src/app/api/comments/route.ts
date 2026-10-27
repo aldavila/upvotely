@@ -1,8 +1,18 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { publicCommentSelect } from '@/lib/public-payloads';
 import { createCommentSchema } from '@/lib/validators';
 import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
+
+const authenticatedCommentSelect = {
+  ...publicCommentSelect,
+  postId: true,
+  authorId: true,
+  parentId: true,
+  updatedAt: true,
+} as const satisfies Prisma.CommentSelect;
 
 const getCommentsQuerySchema = z.object({
   postId: z.string().cuid(),
@@ -33,7 +43,7 @@ export async function GET(req: Request): Promise<NextResponse> {
     if (session?.user?.id) {
       const post = await db.post.findUnique({
         where: { id: postId },
-        include: { board: true },
+        select: { board: { select: { organizationId: true } } },
       });
 
       if (post) {
@@ -48,6 +58,7 @@ export async function GET(req: Request): Promise<NextResponse> {
     }
 
     const showInternal = includeInternal === 'true' && isTeamMember;
+    const commentSelect = session?.user?.id ? authenticatedCommentSelect : publicCommentSelect;
 
     const comments = await db.comment.findMany({
       where: {
@@ -55,17 +66,11 @@ export async function GET(req: Request): Promise<NextResponse> {
         parentId: null, // Top-level comments only
         ...(showInternal ? {} : { isInternal: false }),
       },
-      include: {
-        author: {
-          select: { id: true, name: true, image: true },
-        },
+      select: {
+        ...commentSelect,
         replies: {
           where: showInternal ? {} : { isInternal: false },
-          include: {
-            author: {
-              select: { id: true, name: true, image: true },
-            },
-          },
+          select: commentSelect,
           orderBy: { createdAt: 'asc' },
         },
       },
@@ -106,7 +111,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     // Verify the post exists
     const post = await db.post.findUnique({
       where: { id: postId },
-      include: { board: true },
+      select: { board: { select: { organizationId: true } } },
     });
 
     if (!post) {
@@ -153,11 +158,7 @@ export async function POST(req: Request): Promise<NextResponse> {
         parentId: parentId ?? null,
         isInternal: isInternal ?? false,
       },
-      include: {
-        author: {
-          select: { id: true, name: true, image: true },
-        },
-      },
+      select: authenticatedCommentSelect,
     });
 
     return NextResponse.json(comment, { status: 201 });

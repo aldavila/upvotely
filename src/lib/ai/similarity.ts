@@ -1,4 +1,5 @@
 import { db } from '@/lib/db';
+import { publicPostSuggestionSelect } from '@/lib/public-payloads';
 
 const STOP_WORDS = new Set([
   'a', 'an', 'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with',
@@ -75,11 +76,8 @@ export async function findSimilarPosts(
       ...(excludePostId ? { id: { not: excludePostId } } : {}),
     },
     select: {
-      id: true,
-      title: true,
+      ...publicPostSuggestionSelect,
       content: true,
-      voteCount: true,
-      status: { select: { name: true, color: true, slug: true } },
     },
     take: 200, // Cap candidates for performance
     orderBy: { voteCount: 'desc' },
