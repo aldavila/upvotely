@@ -157,7 +157,7 @@ export const createConversationFeedbackSchema = z.object({
   customerExternalId: z.string().max(255).optional(),
   customerEmail: z.string().email().optional(),
   customerName: z.string().max(255).optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.json()).optional(),
 });
 
 export const listConversationFeedbackSchema = z.object({
@@ -177,7 +177,7 @@ export const identifyCustomerSchema = z.object({
   company: z.string().max(255).optional(),
   mrr: z.number().min(0).optional(),
   plan: z.string().max(100).optional(),
-  attributes: z.record(z.unknown()).optional(),
+  attributes: z.record(z.string(), z.json()).optional(),
 });
 
 export const createCustomerRequestSchema = z.object({
