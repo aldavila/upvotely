@@ -1,4 +1,6 @@
 import { db } from '@/lib/db';
+import type { Prisma } from '@prisma/client';
+import { effectiveEmailFrequency } from './preferences';
 import { sendEmailNotification } from './email';
 
 export type NotificationType = 'new_post' | 'status_change' | 'new_comment' | 'mention' | 'vote_milestone';
@@ -10,7 +12,7 @@ interface CreateNotificationParams {
   title: string;
   message: string;
   link?: string;
-  metadata?: Record<string, unknown>;
+  metadata?: Prisma.InputJsonValue;
 }
 
 function toPrefKey(type: NotificationType, prefix: 'inApp' | 'email'): string {
@@ -33,14 +35,15 @@ export async function createNotification(params: CreateNotificationParams) {
   const emailKey = toPrefKey(params.type, 'email');
 
   const shouldInApp = !prefs || (prefs as Record<string, unknown>)[inAppKey] !== false;
-  const shouldEmail = !prefs || (prefs as Record<string, unknown>)[emailKey] !== false;
+  const shouldEmail = (!prefs || (prefs as Record<string, unknown>)[emailKey] !== false)
+    && effectiveEmailFrequency(prefs?.emailDigest) === 'instant';
 
   if (shouldInApp) {
     await db.notification.create({ data: params });
   }
 
-  if (shouldEmail && (!prefs || prefs.emailDigest === 'instant')) {
-    sendEmailNotification({
+  if (shouldEmail) {
+    await sendEmailNotification({
       userId: params.userId,
       title: params.title,
       message: params.message,
@@ -58,7 +61,7 @@ export async function createBulkNotifications(
   title: string,
   message: string,
   link?: string,
-  metadata?: Record<string, unknown>
+  metadata?: Prisma.InputJsonValue
 ) {
   for (const userId of userIds) {
     await createNotification({ userId, organizationId, type, title, message, link, metadata });

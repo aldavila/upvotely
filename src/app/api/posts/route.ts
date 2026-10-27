@@ -8,6 +8,7 @@ import type { Prisma } from '@prisma/client';
 import { categorizeAndUpdatePost } from '@/lib/ai/categorize';
 import { analyzeAndUpdateSentiment } from '@/lib/ai/sentiment';
 import { createMergeSuggestions } from '@/lib/ai/similarity';
+import { notifyNewPost } from '@/lib/notifications/events';
 
 // Query params validation schema
 const getPostsQuerySchema = z.object({
@@ -244,6 +245,8 @@ export async function POST(req: Request): Promise<NextResponse> {
 
       return post;
     });
+
+    await notifyNewPost(result, board.organizationId, userId).catch(console.error);
 
     // Fire-and-forget: AI categorization, sentiment analysis, and duplicate detection
     categorizeAndUpdatePost(result.id, sanitizedTitle, sanitizedContent).catch(() => {});

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { z } from 'zod';
+import { notifyNewPost } from '@/lib/notifications/events';
 
 // Validation schema for widget submissions
 const widgetSubmitSchema = z.object({
@@ -88,6 +89,8 @@ export async function POST(req: Request): Promise<NextResponse> {
         isApproved: !board.requireApproval,
       },
     });
+
+    await notifyNewPost(post, board.organizationId).catch(console.error);
 
     return NextResponse.json({
       success: true,

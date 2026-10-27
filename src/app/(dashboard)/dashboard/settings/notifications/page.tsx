@@ -6,6 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
+import { effectiveEmailFrequency } from '@/lib/notifications/preferences';
 
 interface Preferences {
   inAppNewPost: boolean;
@@ -36,7 +37,7 @@ const notificationTypes = [
   { key: 'StatusChange', label: 'Status changes on voted posts' },
   { key: 'NewComment', label: 'New comments on your posts' },
   { key: 'Mention', label: 'Mentions' },
-];
+] as const;
 
 export default function NotificationPreferencesPage() {
   const [prefs, setPrefs] = useState<Preferences>(defaultPrefs);
@@ -47,7 +48,7 @@ export default function NotificationPreferencesPage() {
     fetch('/api/notifications/preferences')
       .then((res) => res.json())
       .then((data) => {
-        if (data.preferences) setPrefs({ ...defaultPrefs, ...data.preferences });
+        if (data.preferences) setPrefs({ ...defaultPrefs, ...data.preferences, emailDigest: effectiveEmailFrequency(data.preferences.emailDigest) });
       })
       .finally(() => setLoading(false));
   }, []);
@@ -90,7 +91,7 @@ export default function NotificationPreferencesPage() {
             <div key={key} className="flex items-center justify-between">
               <Label>{label}</Label>
               <Switch
-                checked={(prefs as Record<string, unknown>)[`inApp${key}`] as boolean}
+                checked={prefs[`inApp${key}`]}
                 onCheckedChange={(checked) => setPrefs({ ...prefs, [`inApp${key}`]: checked })}
               />
             </div>
@@ -108,7 +109,7 @@ export default function NotificationPreferencesPage() {
             <div key={key} className="flex items-center justify-between">
               <Label>{label}</Label>
               <Switch
-                checked={(prefs as Record<string, unknown>)[`email${key}`] as boolean}
+                checked={prefs[`email${key}`]}
                 onCheckedChange={(checked) => setPrefs({ ...prefs, [`email${key}`]: checked })}
               />
             </div>
@@ -121,11 +122,13 @@ export default function NotificationPreferencesPage() {
               className="rounded-md border px-3 py-1 text-sm"
             >
               <option value="instant">Instant</option>
-              <option value="daily">Daily digest</option>
-              <option value="weekly">Weekly digest</option>
               <option value="none">No emails</option>
             </select>
           </div>
+          <p className="text-sm text-muted-foreground">
+            Daily and weekly digests are unavailable. Previously saved digest preferences now send instantly.
+            Choose No emails to stop email delivery.
+          </p>
         </CardContent>
       </Card>
 
