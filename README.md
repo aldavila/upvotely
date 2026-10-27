@@ -129,11 +129,20 @@ npm run start        # Start production server
 npm run lint         # Run ESLint
 npm run db:generate  # Generate Prisma client
 npm run db:push      # Push schema to database
+npm run db:deploy    # Deploy committed migrations
 npm run db:migrate   # Run migrations
 npm run db:studio    # Open Prisma Studio
 ```
 
 ## 🌐 Deployment
+
+### Database changes
+
+Database schema changes are a separate, explicit operator step and never run during the Vercel build. The build only generates the Prisma client and builds Next.js; it does not require database access.
+
+The schema is currently managed with `prisma db push`: `prisma/migrations` is gitignored and no migrations are committed. Run `npm run db:push` against the target `DATABASE_URL` to apply schema changes. Once migrations are committed, use `npm run db:deploy` against the target `DATABASE_URL` instead.
+
+Apply schema changes **before deploying code that needs new columns**.
 
 ### Vercel (Recommended)
 
