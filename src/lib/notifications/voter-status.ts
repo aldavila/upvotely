@@ -1,4 +1,5 @@
 import { db } from '@/lib/db';
+import { buildStatusChangeEmail, statusNotificationChannels } from '@/lib/status-notification-policy';
 
 export async function notifyVotersOnStatusChange(
   postId: string,
@@ -30,7 +31,14 @@ export async function notifyVotersOnStatusChange(
 
   if (eligibleUserIds.length === 0) return { notified: 0 };
 
-  const notifications = eligibleUserIds.map((userId) => ({
+  const recipients = await Promise.all(eligibleUserIds.map(async (userId) => {
+    const preference = await db.notificationPreference.findUnique({
+      where: { userId_organizationId: { userId, organizationId } },
+    });
+    return { userId, ...statusNotificationChannels(preference) };
+  }));
+
+  const notifications = recipients.filter((recipient) => recipient.inApp).map(({ userId }) => ({
     userId,
     organizationId,
     type: 'status_change',
@@ -40,9 +48,13 @@ export async function notifyVotersOnStatusChange(
     metadata: { postId, oldStatus: oldStatusName, newStatus: newStatusName },
   }));
 
-  await db.notification.createMany({ data: notifications });
-
-  sendVoterStatusEmails(eligibleUserIds, post.title, newStatusName, postId).catch(console.error);
+  const deliveries = await Promise.allSettled([
+    ...(notifications.length ? [db.notification.createMany({ data: notifications })] : []),
+    sendVoterStatusEmails(recipients.filter((recipient) => recipient.email).map(({ userId }) => userId), post.title, newStatusName, postId),
+  ]);
+  for (const delivery of deliveries) {
+    if (delivery.status === 'rejected') console.error('Voter notification delivery failed');
+  }
 
   return { notified: eligibleUserIds.length };
 }
@@ -65,29 +77,29 @@ async function sendVoterStatusEmails(
 
   if (!apiKey) return;
 
+  const secret = process.env.UNSUBSCRIBE_TOKEN_SECRET;
+  if (!secret) throw new Error('UNSUBSCRIBE_TOKEN_SECRET is required');
+
   const appUrl = process.env.NEXTAUTH_URL || 'https://app.upvotely.io';
 
-  for (const user of users) {
-    if (!user.email) continue;
+  const deliveries = await Promise.allSettled(users.map(async (user) => {
+    if (!user.email) return;
 
-    const prefs = await db.notificationPreference.findFirst({
-      where: { userId: user.id },
-    });
-
-    if (prefs && !prefs.emailStatusChange) continue;
-
-    const html = buildStatusChangeEmail(postTitle, newStatus, postId, user.id, appUrl);
+    const html = buildStatusChangeEmail(postTitle, newStatus, postId, user.id, appUrl, secret);
     const emailFrom = process.env.EMAIL_FROM || 'Upvotely <notifications@upvotely.io>';
 
     if (emailProvider === 'resend') {
-      await fetch('https://api.resend.com/emails', {
+      const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
+        redirect: 'manual',
         headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ from: emailFrom, to: user.email, subject: `Status Update: ${postTitle}`, html }),
-      }).catch(console.error);
+      });
+      if (!response.ok) throw new Error('Email delivery failed');
     } else if (emailProvider === 'sendgrid') {
-      await fetch('https://api.sendgrid.com/v3/mail/send', {
+      const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
         method: 'POST',
+        redirect: 'manual',
         headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           personalizations: [{ to: [{ email: user.email }] }],
@@ -95,23 +107,11 @@ async function sendVoterStatusEmails(
           subject: `Status Update: ${postTitle}`,
           content: [{ type: 'text/html', value: html }],
         }),
-      }).catch(console.error);
+      });
+      if (!response.ok) throw new Error('Email delivery failed');
     }
+  }));
+  for (const delivery of deliveries) {
+    if (delivery.status === 'rejected') console.error('Voter status email delivery failed');
   }
-}
-
-function buildStatusChangeEmail(title: string, status: string, postId: string, userId: string, appUrl: string): string {
-  return `<!DOCTYPE html>
-<html>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <div style="border-bottom: 2px solid #7c3aed; padding-bottom: 16px; margin-bottom: 24px;">
-    <h2 style="color: #7c3aed; margin: 0;">Upvotely</h2>
-  </div>
-  <h3 style="color: #1f2937;">Status Update</h3>
-  <p style="color: #4b5563; line-height: 1.6;">Your feature request <strong>"${title}"</strong> is now <strong>${status}</strong>.</p>
-  <a href="${appUrl}/post/${postId}" style="display: inline-block; padding: 10px 20px; background-color: #7c3aed; color: white; text-decoration: none; border-radius: 6px; margin-top: 16px;">View Post</a>
-  <hr style="border: none; border-top: 1px solid #e5e7eb; margin-top: 32px;" />
-  <p style="color: #9ca3af; font-size: 12px;">You received this because you voted on this post. <a href="${appUrl}/api/unsubscribe/${postId}?userId=${userId}" style="color: #9ca3af;">Unsubscribe from this post</a></p>
-</body>
-</html>`;
 }

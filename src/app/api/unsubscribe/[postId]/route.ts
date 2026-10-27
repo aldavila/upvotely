@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { verifyUnsubscribeToken } from '@/lib/unsubscribe-token';
 
 export async function GET(
   req: Request,
@@ -10,9 +11,9 @@ export async function GET(
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get('userId');
 
-    if (!userId) {
+    if (!userId || !verifyUnsubscribeToken(userId, postId, searchParams.get('token'), process.env.UNSUBSCRIBE_TOKEN_SECRET)) {
       return new NextResponse('<html><body><h1>Invalid unsubscribe link</h1></body></html>', {
-        status: 400,
+        status: 401,
         headers: { 'Content-Type': 'text/html' },
       });
     }

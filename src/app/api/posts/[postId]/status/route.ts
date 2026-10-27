@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { z } from 'zod';
 import { notifyVotersOnStatusChange } from '@/lib/notifications/voter-status';
+import { isOrganizationAdmin } from '@/lib/status-notification-policy';
 
 const updateStatusSchema = z.object({
   statusId: z.string().cuid(),
@@ -17,14 +18,6 @@ export async function PATCH(
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const membership = await db.organizationMember.findFirst({
-      where: { userId: session.user.id, role: { in: ['owner', 'admin'] } },
-    });
-
-    if (!membership) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const body = await req.json();
@@ -42,12 +35,25 @@ export async function PATCH(
       return NextResponse.json({ error: 'Post not found' }, { status: 404 });
     }
 
+    const organizationId = post.board.organizationId;
+    const membership = await db.organizationMember.findFirst({
+      where: { userId: session.user.id, organizationId },
+    });
+
+    if (!isOrganizationAdmin(membership, organizationId)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const newStatus = await db.status.findUnique({
       where: { id: parseResult.data.statusId },
     });
 
-    if (!newStatus) {
+    if (!newStatus || newStatus.organizationId !== organizationId) {
       return NextResponse.json({ error: 'Status not found' }, { status: 404 });
+    }
+
+    if (post.statusId === newStatus.id) {
+      return NextResponse.json({ post });
     }
 
     const oldStatusName = post.status.name;
@@ -58,10 +64,9 @@ export async function PATCH(
       include: { status: true },
     });
 
-    // Notify voters in the background
-    notifyVotersOnStatusChange(
+    await notifyVotersOnStatusChange(
       postId,
-      membership.organizationId,
+      organizationId,
       oldStatusName,
       newStatus.name
     ).catch(console.error);
