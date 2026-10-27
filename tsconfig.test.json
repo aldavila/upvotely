@@ -8,7 +8,18 @@
     "skipLibCheck": true,
     "rootDir": ".",
     "outDir": ".test-dist",
-    "types": ["node"]
+    "types": [
+      "node"
+    ],
+    "lib": [
+      "ES2022",
+      "DOM"
+    ]
   },
-  "include": ["src/lib/status-notification-policy.ts", "src/lib/unsubscribe-token.ts", "tests/**/*.ts"]
+  "include": [
+    "src/lib/status-notification-policy.ts",
+    "src/lib/unsubscribe-token.ts",
+    "tests/**/*.ts",
+    "src/lib/slack-security.ts"
+  ]
 }

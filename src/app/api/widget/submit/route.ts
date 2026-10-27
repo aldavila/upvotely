@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { z } from 'zod';
+import { notifyPostCreated } from '@/lib/integrations/slack';
 
 // Validation schema for widget submissions
 const widgetSubmitSchema = z.object({
@@ -34,11 +35,15 @@ export async function POST(req: Request): Promise<NextResponse> {
     if (boardId) {
       board = await db.board.findUnique({
         where: { id: boardId },
-        include: { organization: true },
+        select: {
+          id: true, organizationId: true, isPublic: true, requireApproval: true,
+          name: true, slug: true, organization: { select: { slug: true } },
+        },
       });
     } else if (organizationSlug && boardSlug) {
       const organization = await db.organization.findUnique({
         where: { slug: organizationSlug },
+        select: { id: true },
       });
 
       if (organization) {
@@ -49,7 +54,10 @@ export async function POST(req: Request): Promise<NextResponse> {
               slug: boardSlug,
             },
           },
-          include: { organization: true },
+          select: {
+            id: true, organizationId: true, isPublic: true, requireApproval: true,
+            name: true, slug: true, organization: { select: { slug: true } },
+          },
         });
       }
     }
@@ -68,6 +76,7 @@ export async function POST(req: Request): Promise<NextResponse> {
         organizationId: board.organizationId,
         isDefault: true,
       },
+      select: { id: true },
     });
 
     if (!defaultStatus) {
@@ -87,7 +96,15 @@ export async function POST(req: Request): Promise<NextResponse> {
         isAnonymous: true,
         isApproved: !board.requireApproval,
       },
+      select: { id: true, isApproved: true },
     });
+
+    if (post.isApproved) {
+      notifyPostCreated(board.organizationId, {
+        title, content, boardName: board.name,
+        authorName: null, organizationSlug: board.organization.slug, boardSlug: board.slug,
+      }).catch(() => {});
+    }
 
     return NextResponse.json({
       success: true,

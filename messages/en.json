@@ -353,5 +353,29 @@
     "unsubscribeSuccess": "You have been unsubscribed from updates for this post",
     "notifyVoters": "Notify voters of this change",
     "votersNotified": "{count} voters have been notified"
+  },
+  "integrations": {
+    "title": "Integrations",
+    "description": "Connect your tools to Upvotely",
+    "slack": {
+      "title": "Slack",
+      "description": "Send notifications and create feedback from Slack",
+      "webhookUrl": "Webhook URL",
+      "webhookUrlDescription": "Your Slack Incoming Webhook URL",
+      "channel": "Channel",
+      "channelDescription": "Default channel for notifications (optional)",
+      "teamId": "Team ID",
+      "teamIdDescription": "Your Slack workspace Team ID (for slash commands)",
+      "notifyOnNewPost": "New post notifications",
+      "notifyOnStatusChange": "Status change notifications",
+      "notifyOnVoteMilestone": "Vote milestone notifications",
+      "connected": "Connected",
+      "disconnected": "Disconnected",
+      "connect": "Connect",
+      "disconnect": "Disconnect",
+      "save": "Save Configuration",
+      "connectionSuccess": "Successfully connected to Slack!",
+      "connectionFailed": "Failed to connect to Slack"
+    }
   }
 }

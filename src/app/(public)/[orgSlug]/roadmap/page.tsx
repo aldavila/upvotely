@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { db } from '@/lib/db';
+import { publicOrganizationSelect, publicRoadmapPostSelect, publicStatusSelect } from '@/lib/public-payloads';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -15,6 +16,7 @@ interface PageProps {
 async function getRoadmap(orgSlug: string) {
   const organization = await db.organization.findUnique({
     where: { slug: orgSlug },
+    select: publicOrganizationSelect,
   });
 
   if (!organization) return null;
@@ -24,6 +26,7 @@ async function getRoadmap(orgSlug: string) {
       organizationId: organization.id,
       showOnRoadmap: true,
     },
+    select: publicStatusSelect,
     orderBy: { position: 'asc' },
   });
 
@@ -34,11 +37,7 @@ async function getRoadmap(orgSlug: string) {
       status: { showOnRoadmap: true },
       mergedIntoId: null,
     },
-    include: {
-      status: true,
-      board: { select: { name: true, slug: true } },
-      _count: { select: { votes: true, comments: true } },
-    },
+    select: publicRoadmapPostSelect,
     orderBy: { voteCount: 'desc' },
   });
 
