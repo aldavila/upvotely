@@ -8,6 +8,7 @@ import type { Prisma } from '@prisma/client';
 import { categorizeAndUpdatePost } from '@/lib/ai/categorize';
 import { analyzeAndUpdateSentiment } from '@/lib/ai/sentiment';
 import { createMergeSuggestions } from '@/lib/ai/similarity';
+import { notifyPostCreated } from '@/lib/integrations/slack';
 
 // Query params validation schema
 const getPostsQuerySchema = z.object({
@@ -244,6 +245,14 @@ export async function POST(req: Request): Promise<NextResponse> {
 
       return post;
     });
+
+    if (result.isApproved) {
+      notifyPostCreated(board.organizationId, {
+        title: result.title, content: result.content, boardName: board.name,
+        authorName: result.author?.name ?? null,
+        organizationSlug: board.organization.slug, boardSlug: board.slug,
+      }).catch(() => {});
+    }
 
     // Fire-and-forget: AI categorization, sentiment analysis, and duplicate detection
     categorizeAndUpdatePost(result.id, sanitizedTitle, sanitizedContent).catch(() => {});
