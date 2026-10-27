@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { createGitHubIssue } from '@/lib/integrations/github';
 import { z } from 'zod';
+import { githubPostWhere } from '@/lib/github-security';
 
 const createIssueSchema = z.object({
   postId: z.string().cuid(),
@@ -30,7 +31,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     }
 
     const post = await db.post.findUnique({
-      where: { id: parseResult.data.postId },
+      where: githubPostWhere(parseResult.data.postId, membership.organizationId),
       include: { board: true, status: true, tags: true },
     });
 
