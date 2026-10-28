@@ -13,7 +13,7 @@ interface GitHubConfig {
   owner: string;
   repo: string;
   defaultLabels: string[];
-  webhookSecret?: string;
+  hasSecret?: boolean;
 }
 
 export default function GitHubIntegrationPage() {
@@ -23,6 +23,7 @@ export default function GitHubIntegrationPage() {
     repo: '',
     defaultLabels: [],
   });
+  const [secret, setSecret] = useState<string | null>(null);
   const [labelsInput, setLabelsInput] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -56,6 +57,7 @@ export default function GitHubIntegrationPage() {
       if (res.ok) {
         const data = await res.json();
         setConfig({ ...data.integration.config, accessToken: '' });
+        setSecret(data.secret || null);
         setIsConnected(true);
       }
     } finally {
@@ -66,6 +68,7 @@ export default function GitHubIntegrationPage() {
   const handleDisconnect = async () => {
     await fetch('/api/integrations/github', { method: 'DELETE' });
     setIsConnected(false);
+    setSecret(null);
     setConfig({ accessToken: '', owner: '', repo: '', defaultLabels: [] });
     setLabelsInput('');
   };
@@ -164,7 +167,8 @@ export default function GitHubIntegrationPage() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="webhookSecret">Webhook Secret</Label>
-            <Input id="webhookSecret" value={config.webhookSecret || ''} readOnly className="font-mono text-sm" />
+            <Input id="webhookSecret" value={secret || (config.hasSecret ? '••••••••••••••••' : 'No secret configured')} readOnly className="font-mono text-sm" />
+            {secret && <p className="text-xs text-muted-foreground">Copy this secret now. It will not be shown again after you leave this page.</p>}
             <p className="text-xs text-muted-foreground">
               Save the configuration to generate a secret, then copy it into this repository’s
               GitHub webhook Secret field. Select application/json and Issues events.

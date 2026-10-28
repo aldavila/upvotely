@@ -48,8 +48,8 @@ export async function POST(
     );
 
     return NextResponse.json({ success: true, message: 'Retry completed' });
-  } catch (error) {
-    console.error('Retry webhook error:', error);
+  } catch {
+    console.error('Retry webhook error');
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -65,6 +65,8 @@ function matches(row: any, where: any): boolean {
 
 function fixtures() {
   const integrations = ['a', 'b'].map((key) => ({
+    createdAt: new Date('2026-01-01T00:00:00Z'), updatedAt: new Date('2026-01-02T00:00:00Z'),
+    slackConnectionCodeHash: randomBytes(32).toString('hex'),
     id: `integration-${key}`, organizationId: `org-${key}`, type: 'github', isActive: true,
     config: { owner: 'example', repo: `repo-${key}`, repository: `example/repo-${key}`, accessToken: '', webhookSecret: key === 'b' ? secret : randomBytes(32).toString('hex') },
     organization: { statuses: [{ id: `complete-${key}`, type: 'complete' }] },
@@ -355,7 +357,7 @@ test('integration secret works without a global secret and authenticates only it
   assert.deepEqual(f.posts.map((p) => p.statusId), ['open', 'complete-b']);
 });
 
-test('saving a connection generates and rotates an admin-readable secret without returning the token', async () => {
+test('saving a connection generates and rotates a copy-once secret without returning the token', async () => {
   const f = fixtures();
   const { POST, GET } = load(configRoute, f.db);
   const suppliedSecret = randomBytes(32).toString('hex');
@@ -364,17 +366,34 @@ test('saving a connection generates and rotates an admin-readable secret without
   for (let i = 0; i < 2; i++) {
     const response = await POST(request(JSON.stringify({ accessToken: token, owner: 'Example', repo: 'Repo-A', webhookSecret: suppliedSecret })));
     assert.equal(response.status, 201);
-    const { integration } = await response.json();
-    assert.match(integration.config.webhookSecret, /^[a-f0-9]{64}$/);
-    assert.notEqual(integration.config.webhookSecret, suppliedSecret);
-    assert.notEqual(integration.config.webhookSecret, previous);
+    const { integration, secret } = await response.json();
+    assert.equal(response.headers.get('Cache-Control'), 'no-store');
+    assert.match(secret, /^[a-f0-9]{64}$/);
+    assert.notEqual(secret, suppliedSecret);
+    assert.notEqual(secret, previous);
+    assert.deepEqual(Object.keys(integration).sort(), ['config', 'createdAt', 'id', 'isActive', 'organizationId', 'type', 'updatedAt']);
+    assert.equal(integration.createdAt, f.integrations[0].createdAt.toISOString());
+    assert.equal(integration.updatedAt, f.integrations[0].updatedAt.toISOString());
+    for (const fragment of [previous, previous.slice(0, 10), token, token.slice(0, 10)]) {
+      assert.equal(JSON.stringify(integration).includes(fragment), false);
+    }
+    assert.equal(integration.config.webhookSecret, undefined);
+    assert.equal(integration.config.hasSecret, true);
     assert.equal(integration.config.repository, 'example/repo-a');
     assert.equal(integration.config.accessToken, undefined);
-    previous = integration.config.webhookSecret;
     const read = await (await GET()).json();
-    assert.equal(read.integration.config.webhookSecret, previous);
+    assert.deepEqual(Object.keys(read.integration).sort(), Object.keys(integration).sort());
+    assert.equal(read.integration.createdAt, integration.createdAt);
+    assert.equal(read.integration.updatedAt, integration.updatedAt);
+    assert.equal(read.integration.config.webhookSecret, undefined);
+    assert.equal(read.integration.config.hasSecret, true);
+    assert.equal(read.secret, undefined);
+    for (const fragment of [secret, secret.slice(0, 10), previous, previous.slice(0, 10)]) {
+      assert.equal(JSON.stringify(read).includes(fragment), false);
+    }
     assert.equal(read.integration.config.accessToken, undefined);
     assert.equal(read.integration.organizationId, 'org-a');
+    previous = secret;
   }
 });
 
@@ -534,10 +553,12 @@ test('a new connection receives an independent server-generated secret', async (
   const { POST } = load(configRoute, f.db);
   const response = await POST(request(JSON.stringify({ owner: 'example', repo: 'repo-a', accessToken: randomBytes(16).toString('hex') })));
   assert.equal(response.status, 201);
-  const { integration } = await response.json();
+  const { integration, secret } = await response.json();
   assert.equal(integration.organizationId, 'org-a');
-  assert.match(integration.config.webhookSecret, /^[a-f0-9]{64}$/);
-  assert.notEqual(integration.config.webhookSecret, f.integrations[0].config.webhookSecret);
+  assert.match(secret, /^[a-f0-9]{64}$/);
+  assert.notEqual(secret, f.integrations[0].config.webhookSecret);
+  assert.equal(integration.config.webhookSecret, undefined);
+  assert.equal(integration.config.hasSecret, true);
 });
 
 test('age alone never releases an ambiguous reservation', async () => {

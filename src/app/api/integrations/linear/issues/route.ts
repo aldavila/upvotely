@@ -37,8 +37,8 @@ export async function POST(req: Request): Promise<NextResponse> {
     if (!result) return NextResponse.json({ error: 'Failed to create Linear issue' }, { status: 500 });
 
     return NextResponse.json(result, { status: 201 });
-  } catch (error) {
-    console.error('Create Linear issue error:', error);
+  } catch {
+    console.error('Create Linear issue error');
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -35,8 +35,8 @@ export async function GET(req: Request): Promise<NextResponse> {
     ]);
 
     return NextResponse.json({ events, total, page, limit });
-  } catch (error) {
-    console.error('Get webhook events error:', error);
+  } catch {
+    console.error('Get webhook events error');
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

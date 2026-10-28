@@ -26,8 +26,8 @@ export async function GET(): Promise<NextResponse> {
     return NextResponse.json({
       integration: integration ? { ...integration, config: { teamId: (integration.config as Record<string, unknown>).teamId } } : null,
     });
-  } catch (error) {
-    console.error('Get Linear integration error:', error);
+  } catch {
+    console.error('Get Linear integration error');
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -55,8 +55,8 @@ export async function POST(req: Request): Promise<NextResponse> {
     });
 
     return NextResponse.json({ integration: { ...integration, config: { teamId: parseResult.data.teamId } } }, { status: 201 });
-  } catch (error) {
-    console.error('Save Linear integration error:', error);
+  } catch {
+    console.error('Save Linear integration error');
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -73,8 +73,8 @@ export async function DELETE(): Promise<NextResponse> {
 
     await db.integration.deleteMany({ where: { organizationId: membership.organizationId, type: 'linear' } });
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Delete Linear integration error:', error);
+  } catch {
+    console.error('Delete Linear integration error');
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

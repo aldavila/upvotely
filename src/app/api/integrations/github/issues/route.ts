@@ -59,8 +59,8 @@ export async function POST(req: Request): Promise<NextResponse> {
     }
 
     return NextResponse.json(result, { status: 201 });
-  } catch (error) {
-    console.error('Create GitHub issue error:', error);
+  } catch {
+    console.error('Create GitHub issue error');
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
