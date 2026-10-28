@@ -2,6 +2,30 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
+
+const publicIntegrationSelect = {
+  id: true,
+  type: true,
+  isActive: true,
+  createdAt: true,
+  updatedAt: true,
+  organizationId: true,
+  config: true,
+} satisfies Prisma.IntegrationSelect;
+
+function integrationResponse(integration: Prisma.IntegrationGetPayload<{ select: typeof publicIntegrationSelect }>) {
+  const config = integration.config as Prisma.JsonObject | null;
+  return {
+    id: integration.id,
+    type: integration.type,
+    isActive: integration.isActive,
+    createdAt: integration.createdAt,
+    updatedAt: integration.updatedAt,
+    organizationId: integration.organizationId,
+    config: { teamId: typeof config?.teamId === 'string' ? config.teamId : null },
+  };
+}
 
 const linearConfigSchema = z.object({
   apiKey: z.string().min(1),
@@ -21,10 +45,11 @@ export async function GET(): Promise<NextResponse> {
 
     const integration = await db.integration.findUnique({
       where: { organizationId_type: { organizationId: membership.organizationId, type: 'linear' } },
+      select: publicIntegrationSelect,
     });
 
     return NextResponse.json({
-      integration: integration ? { ...integration, config: { teamId: (integration.config as Record<string, unknown>).teamId } } : null,
+      integration: integration ? integrationResponse(integration) : null,
     });
   } catch {
     console.error('Get Linear integration error');
@@ -50,11 +75,12 @@ export async function POST(req: Request): Promise<NextResponse> {
 
     const integration = await db.integration.upsert({
       where: { organizationId_type: { organizationId: membership.organizationId, type: 'linear' } },
+      select: publicIntegrationSelect,
       create: { organizationId: membership.organizationId, type: 'linear', config: parseResult.data, isActive: true },
       update: { config: parseResult.data, isActive: true },
     });
 
-    return NextResponse.json({ integration: { ...integration, config: { teamId: parseResult.data.teamId } } }, { status: 201 });
+    return NextResponse.json({ integration: integrationResponse(integration) }, { status: 201 });
   } catch {
     console.error('Save Linear integration error');
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

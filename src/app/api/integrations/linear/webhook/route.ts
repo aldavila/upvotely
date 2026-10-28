@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { emitWebhook } from '@/lib/webhooks/emit';
 import { isFreshLinearTimestamp, linearSyncWhere, organizationPostWhere, verifyLinearSignature } from '@/lib/linear-security';
 import type { Prisma } from '@prisma/client';
 
@@ -62,11 +63,20 @@ export async function POST(req: Request): Promise<NextResponse> {
           );
 
           if (completeStatus) {
-            const updated = await db.post.updateMany({
+            const post = await db.post.findFirst({
               where: organizationPostWhere(sync.entityId, sync.integration.organizationId),
+              select: { id: true, statusId: true },
+            });
+            if (!post || post.statusId === completeStatus.id) continue;
+            const oldStatusId = post.statusId;
+            const updated = await db.post.updateMany({
+              where: { ...organizationPostWhere(sync.entityId, sync.integration.organizationId), statusId: oldStatusId },
               data: { statusId: completeStatus.id },
             });
             if (!updated.count) continue;
+            emitWebhook(sync.integration.organizationId, 'post.status_changed', {
+              postId: post.id, oldStatusId, newStatusId: completeStatus.id,
+            });
 
             await db.integrationSync.update({
               where: { id: sync.id },

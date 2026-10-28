@@ -1,5 +1,6 @@
 import { after, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { emitWebhook } from '@/lib/webhooks/emit';
 import { z } from 'zod';
 import { notifyNewPost } from '@/lib/notifications/events';
 import { notifyPostCreated } from '@/lib/integrations/slack';
@@ -97,7 +98,11 @@ export async function POST(req: Request): Promise<NextResponse> {
         isAnonymous: true,
         isApproved: !board.requireApproval,
       },
-      select: { id: true, isApproved: true },
+      select: { id: true, isApproved: true, createdAt: true },
+    });
+
+    emitWebhook(board.organizationId, 'post.created', {
+      id: post.id, title, boardId: board.id, statusId: defaultStatus.id, createdAt: post.createdAt,
     });
 
     after(() => notifyNewPost({ id: post.id, title, authorId: null, isAnonymous: true }, board.organizationId).catch(console.error));

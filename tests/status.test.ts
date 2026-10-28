@@ -25,6 +25,7 @@ function setup(options: { memberOrg?: string; role?: string; statusOrg?: string;
   };
   const route = loadSource<Route>('src/app/api/posts/[postId]/status/route.ts', {
     'next/server': { NextResponse, after: (task: () => Promise<unknown>) => { afterTasks.push(task); } }, zod: { z }, '@/lib/db': { db },
+    '@/lib/webhooks/emit': { emitWebhook: () => {} },
     '@/lib/auth': { auth: async () => options.anonymous ? null : { user: { id: 'admin-a' } } },
     '@/lib/notifications/events': { notifyStatusChange: async (...args: unknown[]) => {
       state.notifications.push(args);

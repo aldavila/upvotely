@@ -105,6 +105,7 @@ for (const path of ['src/app/api/posts/route.ts', 'src/app/api/widget/submit/rou
     db.$transaction = async (work: any) => work(db);
     const route = loadSource(path, {
       'next/server': { NextResponse, after: () => {} },
+      '@/lib/webhooks/emit': { emitWebhook: () => {} },
       '@/lib/db': { db }, '@/lib/auth': { auth: async () => null },
       '@/lib/api-auth': { authenticateApiKey: async () => null },
       '@/lib/ai/categorize': { categorizeAndUpdatePost: async () => {} },

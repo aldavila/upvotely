@@ -18,8 +18,8 @@ function webhookRequest(body: string, signature: string | null = createHmac('sha
     method: 'POST', body, headers: signature === null ? {} : { 'Linear-Signature': signature },
   });
 }
-function webhook(db: unknown, signingSecret: string | undefined = secret) {
-  return loadSource(webhookFile, { '@/lib/db': { db } }, {
+function webhook(db: unknown, signingSecret: string | undefined = secret, webhooks: unknown[][] = []) {
+  return loadSource(webhookFile, { '@/lib/db': { db }, '@/lib/webhooks/emit': { emitWebhook: (...args: unknown[]) => webhooks.push(JSON.parse(JSON.stringify(args))) } }, {
     process: { env: { LINEAR_WEBHOOK_SIGNING_SECRET: signingSecret } },
   }).POST as (req: Request) => Promise<Response>;
 }
@@ -76,6 +76,7 @@ function webhookDb(rows: Row[], postOrg?: string) {
       update: async () => ({}),
     },
     post: {
+      findFirst: async ({ where }: any) => posts.find(row => matches(row, where)) ?? null,
       update: async ({ where, data }: any) => { const post = posts.find(row => matches(row, where)); if (!post) throw new Error('Not found'); Object.assign(post, data); return post; },
       updateMany: async ({ where, data }: any) => { const found = posts.filter(row => matches(row, where)); found.forEach(row => Object.assign(row, data)); return { count: found.length }; },
     },
@@ -284,3 +285,19 @@ for (const webhookSecret of [undefined, '']) {
     assert.equal(saved(), null);
   });
 }
+
+
+test('Linear status webhooks include the old/new status once and skip conflicting writes', async () => {
+  for (const conflict of [false, true]) {
+    const { db } = webhookDb([sync('correct', 'immutable-a', 'team-a')]);
+    const webhooks: unknown[][] = [];
+    if (conflict) db.post.updateMany = async () => ({ count: 0 });
+    const route = webhook(db, secret, webhooks);
+    for (let attempt = 0; attempt < 2; attempt++) {
+      assert.equal((await route(webhookRequest(JSON.stringify(payload())))).status, 200);
+    }
+    assert.deepEqual(webhooks, conflict ? [] : [['correct', 'post.status_changed', {
+      postId: 'post-correct', oldStatusId: 'open', newStatusId: 'complete-correct',
+    }]]);
+  }
+});

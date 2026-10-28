@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { emitWebhook } from '@/lib/webhooks/emit';
 import { authenticateApiKey } from '@/lib/api-auth';
 import { z } from 'zod';
 
@@ -68,6 +69,9 @@ export async function POST(
         return { voted: true, voteCount: updatedPost.voteCount };
       });
 
+      emitWebhook(post.board.organizationId, result.voted ? 'vote.created' : 'vote.removed', {
+        postId, voteCount: result.voteCount,
+      });
       return NextResponse.json(result);
     }
 
@@ -121,7 +125,7 @@ export async function POST(
           select: { voteCount: true },
         });
 
-        return { voted: false, voteCount: updatedPost.voteCount };
+        return { voted: false, voteCount: updatedPost.voteCount, organizationId: post.board.organizationId };
       }
 
       // Add vote
@@ -139,10 +143,13 @@ export async function POST(
         select: { voteCount: true },
       });
 
-      return { voted: true, voteCount: updatedPost.voteCount };
+      return { voted: true, voteCount: updatedPost.voteCount, organizationId: post.board.organizationId };
     });
 
-    return NextResponse.json(result);
+    emitWebhook(result.organizationId, result.voted ? 'vote.created' : 'vote.removed', {
+      postId, voteCount: result.voteCount,
+    });
+    return NextResponse.json({ voted: result.voted, voteCount: result.voteCount });
   } catch (error) {
     if (error instanceof Error && error.message === 'Post not found') {
       return NextResponse.json({ error: 'Post not found' }, { status: 404 });

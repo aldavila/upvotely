@@ -134,6 +134,7 @@ test('posts GET uses the public allowlist anonymously and preserves authenticate
     let postQuery;
     const route = loadModule(path.join(__dirname, '../src/app/api/posts/route.ts'), {
       'next/server': require('next/server'), zod,
+      '@/lib/webhooks/emit': { emitWebhook: () => {} },
       '@/lib/public-payloads': allowlists,
       '@/lib/validators': validators,
       '@/lib/auth': { auth: async () => mode === 'session' ? { user: { id: 'user' } } : null },

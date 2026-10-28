@@ -22,8 +22,6 @@ const organizationSelect = {
   plan: true,
   boardsLimit: true,
   boardsCount: true,
-  webhookUrl: true,
-  webhookEvents: true,
   createdAt: true,
   updatedAt: true,
 } satisfies Prisma.OrganizationSelect;
@@ -45,8 +43,6 @@ function organizationResponse(org: Prisma.OrganizationGetPayload<{ select: typeo
     plan: org.plan,
     boardsLimit: org.boardsLimit,
     boardsCount: org.boardsCount,
-    webhookUrl: org.webhookUrl,
-    webhookEvents: org.webhookEvents,
     createdAt: org.createdAt,
     updatedAt: org.updatedAt,
   };

@@ -2,10 +2,26 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
 import { randomBytes } from 'node:crypto';
 import { hashSlackConnectionCode, isSlackWebhookUrl } from '@/lib/slack-security';
 
-const publicIntegrationSelect = { config: true, isActive: true, slackTeamId: true };
+const publicIntegrationSelect = { config: true, isActive: true, slackTeamId: true } satisfies Prisma.IntegrationSelect;
+
+function integrationResponse(integration: Prisma.IntegrationGetPayload<{ select: typeof publicIntegrationSelect }>) {
+  const config = integration.config as Prisma.JsonObject | null;
+  const webhookConfigured = typeof config?.webhookUrl === 'string' && config.webhookUrl.length > 0;
+  return {
+    isActive: integration.isActive,
+    slackTeamId: integration.slackTeamId,
+    config: {
+      channel: typeof config?.channel === 'string' ? config.channel : '',
+      notifyOnNewPost: typeof config?.notifyOnNewPost === 'boolean' ? config.notifyOnNewPost : true,
+      webhookConfigured,
+      webhookUrlMasked: webhookConfigured ? 'https://hooks.slack.com/…' : null,
+    },
+  };
+}
 
 const slackConfigSchema = z.object({
   webhookUrl: z.string().refine(isSlackWebhookUrl, 'Use an HTTPS hooks.slack.com URL'),
@@ -33,7 +49,7 @@ export async function GET(): Promise<NextResponse> {
       select: publicIntegrationSelect,
     });
 
-    return NextResponse.json({ integration });
+    return NextResponse.json({ integration: integration ? integrationResponse(integration) : null });
   } catch {
     console.error('Get Slack integration failed');
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -86,7 +102,7 @@ export async function POST(req: Request): Promise<NextResponse> {
       },
     });
 
-    return NextResponse.json({ integration, connectionCode: integration.slackTeamId ? undefined : connectionCode }, { status: 201 });
+    return NextResponse.json({ integration: integrationResponse(integration), connectionCode: integration.slackTeamId ? undefined : connectionCode }, { status: 201 });
   } catch {
     // Database errors can contain the webhook URL or connection hash.
     console.error('Save Slack integration failed');

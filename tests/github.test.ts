@@ -15,6 +15,7 @@ function load(file: string, db: unknown, options: {
   createIssue?: (...args: unknown[]) => unknown;
   authenticated?: boolean;
   errors?: unknown[][];
+  webhooks?: unknown[][];
 } = {}): any {
   const module = { exports: {} };
   const source = ts.transpileModule(readFileSync(resolve(file), 'utf8'), {
@@ -26,6 +27,7 @@ function load(file: string, db: unknown, options: {
     process: { env: { GITHUB_WEBHOOK_SECRET: options.secret } },
     fetch: options.fetch ?? (() => { throw new Error('Unexpected network call'); }),
     require(name: string) {
+      if (name === '@/lib/webhooks/emit') return { emitWebhook: (...args: unknown[]) => options.webhooks?.push(JSON.parse(JSON.stringify(args))) };
       if (name === '@/lib/db') return { db };
       if (name === 'next/server') return { NextResponse: Response };
       if (name === '@/lib/auth') return { auth: async () => options.authenticated === false ? null : ({ user: { id: 'user-a' } }) };
@@ -603,4 +605,20 @@ test('recovery verifies an issue in the original repository after config changes
   const result = await createGitHubIssue('org-a', f.posts[0].id,
     { title: 'Feedback', body: 'Details' }, { issueNumber: 8, confirmed: true });
   assert.equal(result.issueUrl, 'https://github.com/example/original-repo/issues/8');
+});
+
+
+test('GitHub status webhooks include the old/new status once and skip conflicting writes', async () => {
+  for (const conflict of [false, true]) {
+    const f = fixtures();
+    const webhooks: unknown[][] = [];
+    if (conflict) f.db.post.updateMany = async () => ({ count: 0 });
+    const { POST } = load(webhook, f.db, { webhooks });
+    for (let attempt = 0; attempt < 2; attempt++) {
+      assert.equal((await POST(request(closedBody, signature(closedBody)))).status, 200);
+    }
+    assert.deepEqual(webhooks, conflict ? [] : [['org-b', 'post.status_changed', {
+      postId: f.posts[1].id, oldStatusId: 'open', newStatusId: 'complete-b',
+    }]]);
+  }
 });

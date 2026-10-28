@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { emitWebhook } from '@/lib/webhooks/emit';
 import { githubPostWhere, githubRepository, githubSyncWhere, verifyGitHubSignature } from '@/lib/github-security';
 
 export async function POST(req: Request): Promise<NextResponse> {
@@ -48,11 +49,20 @@ export async function POST(req: Request): Promise<NextResponse> {
         if (!completeStatus) continue;
         for (const sync of syncs) {
           // Reject any cross-organization mappings left by earlier exports.
-          const updated = await db.post.updateMany({
+          const post = await db.post.findFirst({
             where: githubPostWhere(sync.entityId, integration.organizationId),
+            select: { id: true, statusId: true },
+          });
+          if (!post || post.statusId === completeStatus.id) continue;
+          const oldStatusId = post.statusId;
+          const updated = await db.post.updateMany({
+            where: { ...githubPostWhere(sync.entityId, integration.organizationId), statusId: oldStatusId },
             data: { statusId: completeStatus.id },
           });
           if (!updated.count) continue;
+          emitWebhook(integration.organizationId, 'post.status_changed', {
+            postId: post.id, oldStatusId, newStatusId: completeStatus.id,
+          });
 
           await db.integrationSync.update({
             where: { id: sync.id },
