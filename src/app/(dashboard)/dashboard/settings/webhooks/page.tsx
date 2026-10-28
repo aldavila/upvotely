@@ -36,7 +36,6 @@ export default function WebhooksSettingsPage() {
   const [webhookUrl, setWebhookUrl] = useState('');
   const [webhookEvents, setWebhookEvents] = useState<string[]>([]);
   const [hasSecret, setHasSecret] = useState(false);
-  const [secretPreview, setSecretPreview] = useState<string | null>(null);
   const [secret, setSecret] = useState<string | null>(null);
   const [showSecret, setShowSecret] = useState(false);
   const [events, setEvents] = useState<WebhookEvent[]>([]);
@@ -52,7 +51,6 @@ export default function WebhooksSettingsPage() {
       setWebhookUrl(config.webhookUrl || '');
       setWebhookEvents(config.webhookEvents || []);
       setHasSecret(config.hasSecret);
-      setSecretPreview(config.secretPreview);
       setEvents(eventsData.events || []);
     }).finally(() => setLoading(false));
   }, []);
@@ -68,7 +66,6 @@ export default function WebhooksSettingsPage() {
       if (res.ok) {
         const data = await res.json();
         setHasSecret(data.hasSecret);
-        setSecretPreview(data.secretPreview);
         setSecret(data.secret || null);
         setShowSecret(!!data.secret);
       }
@@ -86,7 +83,6 @@ export default function WebhooksSettingsPage() {
     if (res.ok) {
       const data = await res.json();
       setHasSecret(data.hasSecret);
-      setSecretPreview(data.secretPreview);
       setSecret(data.secret || null);
       setShowSecret(!!data.secret);
     }
@@ -154,13 +150,15 @@ export default function WebhooksSettingsPage() {
               <Label className="text-sm font-medium">Webhook Secret</Label>
               <div className="mt-1 flex items-center gap-2">
                 <Input
-                  value={showSecret ? secret || secretPreview || 'No secret configured' : hasSecret ? '••••••••••••••••' : 'No secret configured'}
+                  value={showSecret && secret ? secret : hasSecret ? '••••••••••••••••' : 'No secret configured'}
                   readOnly
                   className="font-mono text-sm"
                 />
-                <Button variant="outline" size="icon" onClick={() => setShowSecret(!showSecret)}>
-                  {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </Button>
+                {secret && (
+                  <Button variant="outline" size="icon" aria-label={showSecret ? 'Hide webhook secret' : 'Show webhook secret'} onClick={() => setShowSecret(!showSecret)}>
+                    {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                )}
                 {secret && (
                   <Button variant="outline" size="icon" aria-label="Copy webhook secret" onClick={() => navigator.clipboard.writeText(secret)}>
                     <Copy className="h-4 w-4" />

@@ -41,6 +41,28 @@ function fixture() {
 const put = (body: unknown) => new Request('https://app.example/api/webhooks', { method: 'PUT', body: JSON.stringify(body) });
 const retryArgs = [new Request('https://app.example/retry', { method: 'POST' }), { params: Promise.resolve({ eventId: 'event-a' }) }] as const;
 
+function assertNoStoredSecret(body: unknown, secret: string) {
+  const serialized = JSON.stringify(body);
+  for (const fragment of [secret, secret.slice(0, 10), secret.slice(-4)]) {
+    assert.equal(serialized.includes(fragment), false);
+  }
+  assert.equal(serialized.includes('secretPreview'), false);
+  assert.equal(serialized.includes('webhookSecret'), false);
+}
+
+for (const configured of [false, true]) {
+  test(`GET reports secret presence only (${configured})`, async () => {
+    const f = fixture();
+    const secret = `whsec_${randomBytes(24).toString('hex')}`;
+    f.org.webhookSecret = configured ? secret : null;
+    const response = await load(configPath, f.mocks).GET();
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.deepEqual(body, { webhookUrl: f.org.webhookUrl, webhookEvents: [], hasSecret: configured });
+    assertNoStoredSecret(body, secret);
+  });
+}
+
 test('save rejects unsafe URLs before writing configuration', async () => {
   const f = fixture();
   const route = load(configPath, f.mocks);
@@ -101,6 +123,10 @@ for (const regenerateSecret of [false, true]) {
     const route = load(configPath, f.mocks);
     const created = await route.PUT(put({ webhookUrl: f.org.webhookUrl, regenerateSecret }));
     const body = await created.json();
+    assert.equal(created.status, 200);
+    assert.equal(created.headers.get('Cache-Control'), 'no-store');
+    assert.equal(body.hasSecret, true);
+    assert.deepEqual(Object.keys(body).sort(), ['hasSecret', 'secret', 'webhookEvents', 'webhookUrl']);
     assert.equal(typeof body.secret, 'string');
     assert.equal(body.secret, f.org.webhookSecret);
     assert.notEqual(body.secret, previous);
@@ -109,10 +135,29 @@ for (const regenerateSecret of [false, true]) {
     for (const response of [await route.GET(), await route.PUT(put({ webhookEvents: ['post.created'] }))]) {
       const later = await response.json();
       assert.equal(later.secret, undefined);
-      assert.equal(JSON.stringify(later).includes(body.secret), false);
+      assert.equal(later.hasSecret, true);
+      assertNoStoredSecret(later, body.secret);
+      if (previous) assertNoStoredSecret(later, previous);
     }
   });
 }
+
+test('generation and update errors do not log the secret', async () => {
+  const f = fixture();
+  const secret = `whsec_${randomBytes(24).toString('hex')}`;
+  const logs: unknown[] = [];
+  f.mocks['@/lib/webhooks'] = { generateWebhookSecret: () => secret };
+  const route = load(configPath, f.mocks, { console: { error: (...args: unknown[]) => logs.push(args) } });
+  const created = await route.PUT(put({ regenerateSecret: true }));
+  assert.equal((await created.json()).secret, secret);
+  assert.deepEqual(logs, []);
+  f.db.organization.update = async () => { throw new Error(`Cannot save ${secret}`); };
+  const failed = await route.PUT(put({ regenerateSecret: true }));
+  assert.equal(failed.status, 500);
+  assertNoStoredSecret(await failed.json(), secret);
+  assertNoStoredSecret(logs, secret);
+  assert.equal(logs.length, 1);
+});
 
 test('retry rejects malformed stored payloads before claiming or delivering', async () => {
   const f = fixture();
@@ -167,6 +212,7 @@ test('organization listing does not expose the stored webhook secret', async () 
   assert.equal(response.status, 200);
   const body = await response.json();
   assert.equal(typeof body[0].webhookSecret, 'undefined');
+  assertNoStoredSecret(body, f.org.webhookSecret);
 });
 
 test('delivery revalidates DNS after save and on every retry', async () => {

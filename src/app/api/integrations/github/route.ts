@@ -34,7 +34,14 @@ export async function GET(): Promise<NextResponse> {
       where: { organizationId_type: { organizationId: membership.organizationId, type: 'github' } },
     });
 
-    return NextResponse.json({ integration: integration ? { ...integration, config: { ...(integration.config as Record<string, unknown>), accessToken: undefined } } : null });
+    const config = integration?.config as Record<string, unknown> | null;
+    return NextResponse.json({ integration: integration ? { ...integration, config: {
+      owner: config?.owner,
+      repo: config?.repo,
+      repository: config?.repository,
+      defaultLabels: config?.defaultLabels,
+      hasSecret: !!config?.webhookSecret,
+    } } : null });
   } catch (error) {
     console.error('Get GitHub integration error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -73,9 +80,15 @@ export async function POST(req: Request): Promise<NextResponse> {
       update: { config, isActive: true },
     });
 
-    return NextResponse.json({ integration: { ...integration, config: { ...config, accessToken: undefined } } }, { status: 201 });
-  } catch (error) {
-    console.error('Save GitHub integration error:', error);
+    return NextResponse.json({ integration: { ...integration, config: {
+      owner: config.owner,
+      repo: config.repo,
+      repository: config.repository,
+      defaultLabels: config.defaultLabels,
+      hasSecret: true,
+    } }, secret: config.webhookSecret }, { status: 201, headers: { 'Cache-Control': 'no-store' } });
+  } catch {
+    console.error('Save GitHub integration error');
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

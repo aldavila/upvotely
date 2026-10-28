@@ -31,10 +31,9 @@ export async function GET(): Promise<NextResponse> {
       webhookUrl: org?.webhookUrl || '',
       webhookEvents: org?.webhookEvents || [],
       hasSecret: !!org?.webhookSecret,
-      secretPreview: org?.webhookSecret ? `${org.webhookSecret.slice(0, 10)}...` : null,
     });
-  } catch (error) {
-    console.error('Get webhook config error:', error);
+  } catch {
+    console.error('Get webhook config error');
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -84,11 +83,10 @@ export async function PUT(req: Request): Promise<NextResponse> {
       webhookUrl: org.webhookUrl || '',
       webhookEvents: org.webhookEvents,
       hasSecret: !!org.webhookSecret,
-      secretPreview: org.webhookSecret ? `${org.webhookSecret.slice(0, 10)}...` : null,
       ...(secret ? { secret } : {}),
     }, { headers: { 'Cache-Control': 'no-store' } });
-  } catch (error) {
-    console.error('Update webhook config error:', error);
+  } catch {
+    console.error('Update webhook config error');
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

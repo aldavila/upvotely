@@ -3,6 +3,54 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { createOrganizationSchema } from '@/lib/validators';
 import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
+
+// Do not expose stored secret.
+const organizationSelect = {
+  id: true,
+  name: true,
+  slug: true,
+  description: true,
+  logo: true,
+  favicon: true,
+  primaryColor: true,
+  accentColor: true,
+  showBranding: true,
+  customDomain: true,
+  domainVerified: true,
+  domainVerifiedAt: true,
+  plan: true,
+  boardsLimit: true,
+  boardsCount: true,
+  webhookUrl: true,
+  webhookEvents: true,
+  createdAt: true,
+  updatedAt: true,
+} satisfies Prisma.OrganizationSelect;
+
+function organizationResponse(org: Prisma.OrganizationGetPayload<{ select: typeof organizationSelect }>) {
+  return {
+    id: org.id,
+    name: org.name,
+    slug: org.slug,
+    description: org.description,
+    logo: org.logo,
+    favicon: org.favicon,
+    primaryColor: org.primaryColor,
+    accentColor: org.accentColor,
+    showBranding: org.showBranding,
+    customDomain: org.customDomain,
+    domainVerified: org.domainVerified,
+    domainVerifiedAt: org.domainVerifiedAt,
+    plan: org.plan,
+    boardsLimit: org.boardsLimit,
+    boardsCount: org.boardsCount,
+    webhookUrl: org.webhookUrl,
+    webhookEvents: org.webhookEvents,
+    createdAt: org.createdAt,
+    updatedAt: org.updatedAt,
+  };
+}
 
 export async function GET(): Promise<NextResponse> {
   try {
@@ -15,7 +63,8 @@ export async function GET(): Promise<NextResponse> {
       where: { userId: session.user.id },
       include: {
         organization: {
-          include: {
+          select: {
+            ...organizationSelect,
             _count: { select: { boards: true, members: true } },
           },
         },
@@ -24,8 +73,8 @@ export async function GET(): Promise<NextResponse> {
 
     return NextResponse.json(
       memberships.map((m) => ({
-        ...m.organization,
-        webhookSecret: undefined,
+        ...organizationResponse(m.organization),
+        _count: m.organization._count,
         role: m.role,
       }))
     );
@@ -79,6 +128,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     // Create organization and membership in a transaction
     const organization = await db.$transaction(async (tx) => {
       const org = await tx.organization.create({
+        select: organizationSelect,
         data: {
           name: sanitizedName,
           slug: sanitizedSlug,
@@ -110,7 +160,7 @@ export async function POST(req: Request): Promise<NextResponse> {
       return org;
     });
 
-    return NextResponse.json(organization, { status: 201 });
+    return NextResponse.json(organizationResponse(organization), { status: 201 });
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
       console.error('Error creating organization:', error);

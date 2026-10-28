@@ -355,7 +355,7 @@ test('integration secret works without a global secret and authenticates only it
   assert.deepEqual(f.posts.map((p) => p.statusId), ['open', 'complete-b']);
 });
 
-test('saving a connection generates and rotates an admin-readable secret without returning the token', async () => {
+test('saving a connection generates and rotates a copy-once secret without returning the token', async () => {
   const f = fixtures();
   const { POST, GET } = load(configRoute, f.db);
   const suppliedSecret = randomBytes(32).toString('hex');
@@ -364,15 +364,23 @@ test('saving a connection generates and rotates an admin-readable secret without
   for (let i = 0; i < 2; i++) {
     const response = await POST(request(JSON.stringify({ accessToken: token, owner: 'Example', repo: 'Repo-A', webhookSecret: suppliedSecret })));
     assert.equal(response.status, 201);
-    const { integration } = await response.json();
-    assert.match(integration.config.webhookSecret, /^[a-f0-9]{64}$/);
-    assert.notEqual(integration.config.webhookSecret, suppliedSecret);
-    assert.notEqual(integration.config.webhookSecret, previous);
+    const { integration, secret } = await response.json();
+    assert.equal(response.headers.get('Cache-Control'), 'no-store');
+    assert.match(secret, /^[a-f0-9]{64}$/);
+    assert.notEqual(secret, suppliedSecret);
+    assert.notEqual(secret, previous);
+    assert.equal(integration.config.webhookSecret, undefined);
+    assert.equal(integration.config.hasSecret, true);
     assert.equal(integration.config.repository, 'example/repo-a');
     assert.equal(integration.config.accessToken, undefined);
-    previous = integration.config.webhookSecret;
+    previous = secret;
     const read = await (await GET()).json();
-    assert.equal(read.integration.config.webhookSecret, previous);
+    assert.equal(read.integration.config.webhookSecret, undefined);
+    assert.equal(read.integration.config.hasSecret, true);
+    assert.equal(read.secret, undefined);
+    for (const fragment of [secret, secret.slice(0, 10), secret.slice(-4)]) {
+      assert.equal(JSON.stringify(read).includes(fragment), false);
+    }
     assert.equal(read.integration.config.accessToken, undefined);
     assert.equal(read.integration.organizationId, 'org-a');
   }
@@ -534,10 +542,12 @@ test('a new connection receives an independent server-generated secret', async (
   const { POST } = load(configRoute, f.db);
   const response = await POST(request(JSON.stringify({ owner: 'example', repo: 'repo-a', accessToken: randomBytes(16).toString('hex') })));
   assert.equal(response.status, 201);
-  const { integration } = await response.json();
+  const { integration, secret } = await response.json();
   assert.equal(integration.organizationId, 'org-a');
-  assert.match(integration.config.webhookSecret, /^[a-f0-9]{64}$/);
-  assert.notEqual(integration.config.webhookSecret, f.integrations[0].config.webhookSecret);
+  assert.match(secret, /^[a-f0-9]{64}$/);
+  assert.notEqual(secret, f.integrations[0].config.webhookSecret);
+  assert.equal(integration.config.webhookSecret, undefined);
+  assert.equal(integration.config.hasSecret, true);
 });
 
 test('age alone never releases an ambiguous reservation', async () => {
