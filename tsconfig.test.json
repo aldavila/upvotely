@@ -3,11 +3,11 @@
     "target": "ES2022",
     "module": "CommonJS",
     "moduleResolution": "Node",
-    "outDir": ".test-dist",
-    "rootDir": ".",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "rootDir": ".",
+    "outDir": ".test-dist",
     "lib": [
       "ES2022",
       "DOM"
@@ -36,6 +36,8 @@
     "src/lib/linear-*.ts",
     "src/lib/integrations/linear.ts",
     "src/app/api/integrations/linear/**/*.ts",
-    "src/app/(dashboard)/dashboard/settings/integrations/linear/page.tsx"
+    "src/app/(dashboard)/dashboard/settings/integrations/linear/page.tsx",
+    "src/lib/notifications/template.ts",
+    "src/lib/notifications/preferences.ts"
   ]
 }

@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { z } from 'zod';
-import { notifyVotersOnStatusChange } from '@/lib/notifications/voter-status';
+import { notifyStatusChange } from '@/lib/notifications/events';
 import { isOrganizationAdmin } from '@/lib/status-notification-policy';
 
 const updateStatusSchema = z.object({
@@ -56,20 +56,19 @@ export async function PATCH(
       return NextResponse.json({ post });
     }
 
-    const oldStatusName = post.status.name;
-
-    const updatedPost = await db.post.update({
-      where: { id: postId },
+    const updated = await db.post.updateMany({
+      where: { id: postId, statusId: post.statusId },
       data: { statusId: parseResult.data.statusId },
-      include: { status: true },
     });
 
-    await notifyVotersOnStatusChange(
-      postId,
-      organizationId,
-      oldStatusName,
-      newStatus.name
-    ).catch(console.error);
+    if (!updated.count) {
+      return NextResponse.json({ error: 'Post status changed; retry' }, { status: 409 });
+    }
+    const actorId = session.user.id;
+    after(() => notifyStatusChange(post, post.status, newStatus, organizationId, actorId).catch(console.error));
+    const updatedPost = await db.post.findUnique({
+      where: { id: postId }, include: { status: true },
+    });
 
     return NextResponse.json({ post: updatedPost });
   } catch (error) {

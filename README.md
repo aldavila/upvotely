@@ -169,7 +169,9 @@ npm run db:studio    # Open Prisma Studio
 
 Database schema changes are a separate, explicit operator step and never run during the Vercel build. The build only generates the Prisma client and builds Next.js; it does not require database access.
 
-The schema is currently managed with `prisma db push`: `prisma/migrations` is gitignored and no migrations are committed. Run `npm run db:push` against the target `DATABASE_URL` to apply schema changes. Once migrations are committed, use `npm run db:deploy` against the target `DATABASE_URL` instead.
+Schema changes are managed with committed Prisma migrations in `prisma/migrations` (baseline `0_init`). Run `npm run db:deploy` against the target `DATABASE_URL` to apply them.
+
+Existing databases that were created with `prisma db push` must be baselined once with `npx prisma migrate resolve --applied 0_init` before the first `npm run db:deploy`. Fresh databases just run `npm run db:deploy`.
 
 Apply schema changes **before deploying code that needs new columns**.
 

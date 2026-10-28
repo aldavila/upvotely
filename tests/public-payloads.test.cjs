@@ -140,6 +140,7 @@ test('posts GET uses the public allowlist anonymously and preserves authenticate
       '@/lib/api-auth': { authenticateApiKey: async () => mode === 'api-key' ? { organizationId: 'org' } : null },
       '@/lib/ai/categorize': {}, '@/lib/ai/sentiment': {}, '@/lib/ai/similarity': {},
       '@/lib/integrations/slack': { notifyPostCreated: async () => {} },
+      '@/lib/notifications/events': { notifyNewPost: async () => {} },
       '@/lib/db': { db: {
         board: { findUnique: async () => ({ organizationId: 'org' }) },
         post: {

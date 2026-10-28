@@ -343,6 +343,39 @@
     "unauthorized": "No tienes permiso para acceder a esto.",
     "validation": "Por favor revisa tu entrada e intenta de nuevo."
   },
+  "notifications": {
+    "title": "Notificaciones",
+    "description": "Mantente al día con tu feedback",
+    "noNotifications": "Aún no hay notificaciones",
+    "markAllRead": "Marcar todas como leídas",
+    "markAsRead": "Marcar como leída",
+    "viewAll": "Ver todas las notificaciones",
+    "unread": "No leídas",
+    "all": "Todas",
+    "preferences": {
+      "title": "Preferencias de Notificación",
+      "description": "Elige cómo quieres ser notificado",
+      "inApp": "Notificaciones en la App",
+      "email": "Notificaciones por Email",
+      "newPost": "Nuevos posts en tus tableros",
+      "statusChange": "Cambios de estado en posts votados",
+      "newComment": "Nuevos comentarios en tus posts",
+      "mention": "Menciones",
+      "emailDigest": "Frecuencia de email",
+      "instant": "Instantáneo",
+      "daily": "Resumen diario",
+      "weekly": "Resumen semanal",
+      "none": "Sin emails",
+      "saved": "Preferencias guardadas"
+    },
+    "types": {
+      "new_post": "Nuevo Post",
+      "status_change": "Cambio de Estado",
+      "new_comment": "Nuevo Comentario",
+      "mention": "Mención",
+      "vote_milestone": "Hito de Votos"
+    }
+  },
   "webhooks": {
     "title": "Webhooks",
     "description": "Configura notificaciones webhook para tu organización",

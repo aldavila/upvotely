@@ -9,6 +9,7 @@ import type { Prisma } from '@prisma/client';
 import { categorizeAndUpdatePost } from '@/lib/ai/categorize';
 import { analyzeAndUpdateSentiment } from '@/lib/ai/sentiment';
 import { createMergeSuggestions } from '@/lib/ai/similarity';
+import { notifyNewPost } from '@/lib/notifications/events';
 import { notifyPostCreated } from '@/lib/integrations/slack';
 
 const authenticatedPostInclude = {
@@ -239,6 +240,12 @@ export async function POST(req: Request): Promise<NextResponse> {
       return post;
     });
 
+    await notifyNewPost({
+      id: result.id,
+      title: sanitizedTitle,
+      authorId: (validatedData.isAnonymous || !userId) ? null : userId,
+      isAnonymous: validatedData.isAnonymous ?? !userId,
+    }, board.organizationId, userId).catch(console.error);
     if (isApproved) {
       notifyPostCreated(board.organizationId, {
         title: sanitizedTitle, content: sanitizedContent, boardName: board.name,

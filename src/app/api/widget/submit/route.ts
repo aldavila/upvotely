@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { z } from 'zod';
+import { notifyNewPost } from '@/lib/notifications/events';
 import { notifyPostCreated } from '@/lib/integrations/slack';
 
 // Validation schema for widget submissions
@@ -99,6 +100,7 @@ export async function POST(req: Request): Promise<NextResponse> {
       select: { id: true, isApproved: true },
     });
 
+    after(() => notifyNewPost({ id: post.id, title, authorId: null, isAnonymous: true }, board.organizationId).catch(console.error));
     if (post.isApproved) {
       notifyPostCreated(board.organizationId, {
         title, content, boardName: board.name,

@@ -1,8 +1,9 @@
+import { NextResponse } from 'next/server';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createHmac, randomBytes } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { closeSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { loadSource } from './load-source';
 
@@ -12,7 +13,7 @@ test('build generates Prisma client before next build without deploying migratio
   const output = openSync(join(dir, 'output'), 'w');
   try {
     // Run the real build script with offline process doubles. This project has
-    // no migration baseline: builds must not deploy migrations or access a
+    // a committed migration baseline: builds must not deploy migrations or access a
     // database. Never start the real Prisma or Next.js processes.
     writeFileSync(join(dir, 'prisma'), `#!${process.execPath}
 const fs = require('node:fs');
@@ -28,7 +29,8 @@ require('node:fs').appendFileSync(${JSON.stringify(join(dir, 'calls'))}, 'next b
     const build = JSON.parse(readFileSync('package.json', 'utf8')).scripts.build;
     execFileSync('/bin/sh', ['-c', build], { env: { PATH: dir, NODE_ENV: 'test' }, stdio: ['ignore', output, output] });
     assert.equal(readFileSync(join(dir, 'calls'), 'utf8'), 'generate\nnext build\n');
-    execFileSync('git', ['check-ignore', '--quiet', '--no-index', 'prisma/migrations/future/migration.sql'], { stdio: ['ignore', output, output] });
+    assert.ok(existsSync('prisma/migrations/0_init/migration.sql'));
+    assert.throws(() => execFileSync('git', ['check-ignore', '--quiet', '--no-index', 'prisma/migrations/future/migration.sql'], { stdio: 'ignore' }));
   } catch (error) {
     throw new Error(readFileSync(join(dir, 'output'), 'utf8'), { cause: error });
   } finally {
@@ -92,12 +94,14 @@ function postRoute(path: string, requireApproval: boolean, notifyPostCreated: (.
   };
   db.$transaction = async (work: any) => work(db);
   return { posts, route: loadSource(path, {
+    'next/server': { NextResponse, after: () => {} },
     '@/lib/db': { db }, '@/lib/auth': { auth: async () => null },
     '@/lib/api-auth': { authenticateApiKey: async () => null },
     '@/lib/ai/categorize': { categorizeAndUpdatePost: async () => {} },
     '@/lib/ai/sentiment': { analyzeAndUpdateSentiment: async () => {} },
     '@/lib/ai/similarity': { createMergeSuggestions: async () => {} },
     '@/lib/integrations/slack': { notifyPostCreated },
+    '@/lib/notifications/events': { notifyNewPost: async () => {} },
   }, { SLACK_SIGNING_SECRET: secret }) };
 }
 for (const path of postPaths) {

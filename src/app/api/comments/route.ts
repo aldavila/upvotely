@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { publicCommentSelect } from '@/lib/public-payloads';
 import { createCommentSchema } from '@/lib/validators';
 import { z } from 'zod';
+import { notifyMentions, notifyNewComment } from '@/lib/notifications/events';
 import type { Prisma } from '@prisma/client';
 
 const authenticatedCommentSelect = {
@@ -111,7 +112,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     // Verify the post exists
     const post = await db.post.findUnique({
       where: { id: postId },
-      select: { board: { select: { organizationId: true } } },
+      select: { id: true, title: true, authorId: true, board: { select: { organizationId: true } } },
     });
 
     if (!post) {
@@ -160,6 +161,14 @@ export async function POST(req: Request): Promise<NextResponse> {
       },
       select: authenticatedCommentSelect,
     });
+
+    const mentionedUserIds = await notifyMentions(post, comment, post.board.organizationId)
+      .catch(error => {
+        console.error(error);
+        return [];
+      });
+    await notifyNewComment(post, comment, post.board.organizationId, mentionedUserIds)
+      .catch(console.error);
 
     return NextResponse.json(comment, { status: 201 });
   } catch (error) {
