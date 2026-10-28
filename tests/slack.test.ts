@@ -30,7 +30,7 @@ function setupCommand(matches = [integration], testEnv = env) {
     post: { create: async ({ data }: any) => { posts.push(data); return { ...data, id: 'post' }; } },
     integrationSync: { create: async () => ({}) },
   };
-  const route = loadSource(commandRoute, { '@/lib/db': { db }, '@/lib/integrations/slack': { notifyPostCreated: async (...args: any[]) => notifications.push(args) } }, testEnv);
+  const route = loadSource(commandRoute, { '@/lib/db': { db }, '@/lib/webhooks/emit': { emitWebhook: () => {} }, '@/lib/integrations/slack': { notifyPostCreated: async (...args: any[]) => notifications.push(args) } }, testEnv);
   return { route, posts, notifications, reads: () => reads };
 }
 for (const kind of ['missing', 'bad', 'stale', 'future', 'tampered', 'no-secret']) {
@@ -184,7 +184,7 @@ test('only an admin-issued, unexpired code binds a signed workspace and it is si
   };
   const stubs = { '@/lib/db': { db }, '@/lib/auth': { auth: async () => ({ user: { id: 'admin-a' } }) } };
   const settings = loadSource(settingsRoute, stubs, env);
-  const command = loadSource(commandRoute, stubs, env);
+  const command = loadSource(commandRoute, { ...stubs, '@/lib/webhooks/emit': { emitWebhook: () => {} } }, env);
   const saved = await settings.POST(new Request('https://app.example.test/api/integrations/slack', { method: 'POST', body: JSON.stringify({ webhookUrl: 'https://hooks.slack.com/services/test' }) }));
   const data = await saved.json();
   assert.equal(data.integration.slackConnectionCodeHash, undefined);
@@ -206,14 +206,14 @@ test('only an admin-issued, unexpired code binds a signed workspace and it is si
 });
 test('database uniqueness conflicts reject a workspace claim', async () => {
   const db = { integration: { updateMany: async () => { throw { code: 'P2002' }; } } };
-  const route = loadSource(commandRoute, { '@/lib/db': { db } }, env);
+  const route = loadSource(commandRoute, { '@/lib/db': { db }, '@/lib/webhooks/emit': { emitWebhook: () => {} } }, env);
   const raw = body.replace(/&text=.*/, '&text=connect+' + randomBytes(32).toString('hex'));
   assert.equal((await route.POST(request(raw))).status, 409);
 });
 test('unsigned connection requests cannot bind a workspace', async () => {
   let writes = 0;
   const db = { integration: { updateMany: async () => { writes++; return { count: 1 }; } } };
-  const route = loadSource(commandRoute, { '@/lib/db': { db } }, env);
+  const route = loadSource(commandRoute, { '@/lib/db': { db }, '@/lib/webhooks/emit': { emitWebhook: () => {} } }, env);
   const raw = body.replace(/&text=.*/, '&text=connect+' + randomBytes(32).toString('hex'));
   assert.equal((await route.POST(request(raw, undefined, false))).status, 401);
   assert.equal(writes, 0);

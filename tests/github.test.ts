@@ -608,17 +608,70 @@ test('recovery verifies an issue in the original repository after config changes
 });
 
 
-test('GitHub status webhooks include the old/new status once and skip conflicting writes', async () => {
-  for (const conflict of [false, true]) {
-    const f = fixtures();
+for (const scenario of ['replay', 'already complete', 'race completes', 'race changes status', 'second race loses', 'post disappears']) {
+  test(`GitHub completion handles ${scenario} without duplicate or dropped events`, async () => {
+    const { db, posts, syncs } = fixtures();
+    const post = posts[1];
+    const syncRow = syncs[1];
     const webhooks: unknown[][] = [];
-    if (conflict) f.db.post.updateMany = async () => ({ count: 0 });
-    const { POST } = load(webhook, f.db, { webhooks });
-    for (let attempt = 0; attempt < 2; attempt++) {
-      assert.equal((await POST(request(closedBody, signature(closedBody)))).status, 200);
+    const metadataUpdates: any[] = [];
+    const priorMetadata = { ...syncRow.metadata, preserved: 'existing value', closedAt: 'old timestamp' };
+    syncRow.metadata = priorMetadata;
+    const findPost = db.post.findFirst;
+    const updatePost = db.post.updateMany;
+    let reads = 0;
+    let writes = 0;
+    db.post.findFirst = async (query: any) => {
+      reads++;
+      if (scenario === 'post disappears' && reads === 2) return null;
+      const found = await findPost(query);
+      // Prisma returns a snapshot, not a reference to the mutable test row.
+      return found ? { ...found } : null;
+    };
+    db.post.updateMany = async (query: any) => {
+      writes++;
+      assert.equal(query.where.statusId, writes === 1 ? 'open' : 'in-progress');
+      assert.equal(query.where.board.organizationId, 'org-b');
+      if (scenario === 'race completes') {
+        post.statusId = 'complete-b';
+        return { count: 0 };
+      }
+      if (['race changes status', 'second race loses', 'post disappears'].includes(scenario) && writes === 1) {
+        post.statusId = 'in-progress';
+        return { count: 0 };
+      }
+      if (scenario === 'second race loses') return { count: 0 };
+      return updatePost(query);
+    };
+    db.integrationSync.update = async (query: any) => { metadataUpdates.push(query); return syncRow; };
+    if (scenario === 'already complete') post.statusId = 'complete-b';
+    const { POST } = load(webhook, db, { webhooks });
+    const deliver = () => POST(request(closedBody, signature(closedBody)));
+    const failed = scenario === 'second race loses' || scenario === 'post disappears';
+    const response = await deliver();
+    assert.equal(response.status, failed ? 503 : 200);
+    const expectedWrites = scenario === 'already complete' ? 0 : ['race changes status', 'second race loses'].includes(scenario) ? 2 : 1;
+    assert.equal(writes, expectedWrites);
+    assert.equal(reads, ['replay', 'already complete'].includes(scenario) ? 1 : 2);
+    assert.equal(post.statusId, failed ? 'in-progress' : 'complete-b');
+    const changed = scenario === 'replay' || scenario === 'race changes status';
+    assert.deepEqual(webhooks, changed ? [['org-b', 'post.status_changed', {
+      postId: post.id, oldStatusId: scenario === 'replay' ? 'open' : 'in-progress', newStatusId: 'complete-b',
+    }]] : []);
+    assert.equal(metadataUpdates.length, failed ? 0 : 1);
+    if (!failed) {
+      const update = metadataUpdates[0];
+      assert.deepEqual(JSON.parse(JSON.stringify(update.where)), { id: syncRow.id });
+      assert.deepEqual(JSON.parse(JSON.stringify(update.data.metadata)), {
+        ...priorMetadata, lastGitHubAction: 'closed', closedAt: update.data.metadata.closedAt,
+      });
+      assert.ok(Number.isFinite(Date.parse(update.data.metadata.closedAt)));
     }
-    assert.deepEqual(webhooks, conflict ? [] : [['org-b', 'post.status_changed', {
-      postId: f.posts[1].id, oldStatusId: 'open', newStatusId: 'complete-b',
-    }]]);
-  }
-});
+    if (scenario === 'replay') {
+      assert.equal((await deliver()).status, 200);
+      assert.equal(writes, 1);
+      assert.equal(webhooks.length, 1);
+      assert.equal(metadataUpdates.length, 2);
+    }
+  });
+}

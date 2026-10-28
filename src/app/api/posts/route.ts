@@ -241,11 +241,6 @@ export async function POST(req: Request): Promise<NextResponse> {
       return post;
     });
 
-    emitWebhook(board.organizationId, 'post.created', {
-      id: result.id, title: result.title, boardId: validatedData.boardId,
-      statusId: defaultStatus.id, createdAt: result.createdAt,
-    });
-
     await notifyNewPost({
       id: result.id,
       title: sanitizedTitle,
@@ -253,6 +248,10 @@ export async function POST(req: Request): Promise<NextResponse> {
       isAnonymous: validatedData.isAnonymous ?? !userId,
     }, board.organizationId, userId).catch(console.error);
     if (isApproved) {
+      emitWebhook(board.organizationId, 'post.created', {
+        id: result.id, title: result.title, boardId: validatedData.boardId,
+        statusId: defaultStatus.id, createdAt: result.createdAt,
+      });
       notifyPostCreated(board.organizationId, {
         title: sanitizedTitle, content: sanitizedContent, boardName: board.name,
         authorName: result.author?.name ?? null,

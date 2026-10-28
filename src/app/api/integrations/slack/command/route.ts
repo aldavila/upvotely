@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { hashSlackConnectionCode, verifySlackRequest } from '@/lib/slack-security';
 import { notifyPostCreated } from '@/lib/integrations/slack';
+import { emitWebhook } from '@/lib/webhooks/emit';
 
 export async function POST(req: Request): Promise<NextResponse> {
   try {
@@ -110,6 +111,9 @@ export async function POST(req: Request): Promise<NextResponse> {
     });
 
     if (post.isApproved) {
+      emitWebhook(integration.organizationId, 'post.created', {
+        id: post.id, title, boardId: board.id, statusId: defaultStatus.id, createdAt: post.createdAt,
+      });
       notifyPostCreated(integration.organizationId, {
         title, content, boardName: board.name, authorName: userName,
         organizationSlug: org.slug, boardSlug: board.slug,

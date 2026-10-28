@@ -101,12 +101,11 @@ export async function POST(req: Request): Promise<NextResponse> {
       select: { id: true, isApproved: true, createdAt: true },
     });
 
-    emitWebhook(board.organizationId, 'post.created', {
-      id: post.id, title, boardId: board.id, statusId: defaultStatus.id, createdAt: post.createdAt,
-    });
-
     after(() => notifyNewPost({ id: post.id, title, authorId: null, isAnonymous: true }, board.organizationId).catch(console.error));
     if (post.isApproved) {
+      emitWebhook(board.organizationId, 'post.created', {
+        id: post.id, title, boardId: board.id, statusId: defaultStatus.id, createdAt: post.createdAt,
+      });
       notifyPostCreated(board.organizationId, {
         title, content, boardName: board.name,
         authorName: null, organizationSlug: board.organization.slug, boardSlug: board.slug,

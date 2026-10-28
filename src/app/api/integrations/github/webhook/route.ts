@@ -49,20 +49,35 @@ export async function POST(req: Request): Promise<NextResponse> {
         if (!completeStatus) continue;
         for (const sync of syncs) {
           // Reject any cross-organization mappings left by earlier exports.
-          const post = await db.post.findFirst({
+          let post = await db.post.findFirst({
             where: githubPostWhere(sync.entityId, integration.organizationId),
             select: { id: true, statusId: true },
           });
-          if (!post || post.statusId === completeStatus.id) continue;
-          const oldStatusId = post.statusId;
-          const updated = await db.post.updateMany({
-            where: { ...githubPostWhere(sync.entityId, integration.organizationId), statusId: oldStatusId },
-            data: { statusId: completeStatus.id },
-          });
-          if (!updated.count) continue;
-          emitWebhook(integration.organizationId, 'post.status_changed', {
-            postId: post.id, oldStatusId, newStatusId: completeStatus.id,
-          });
+          if (!post) continue;
+          // Retry one competing status change; a completed post only needs sync metadata.
+          for (let attempt = 0; post.statusId !== completeStatus.id; attempt++) {
+            const oldStatusId = post.statusId;
+            const updated = await db.post.updateMany({
+              where: { ...githubPostWhere(sync.entityId, integration.organizationId), statusId: oldStatusId },
+              data: { statusId: completeStatus.id },
+            });
+            if (updated.count) {
+              emitWebhook(integration.organizationId, 'post.status_changed', {
+                postId: post.id, oldStatusId, newStatusId: completeStatus.id,
+              });
+              break;
+            }
+            if (attempt === 1) {
+              return NextResponse.json({ error: 'Post status changed; retry' }, { status: 503 });
+            }
+            post = await db.post.findFirst({
+              where: githubPostWhere(sync.entityId, integration.organizationId),
+              select: { id: true, statusId: true },
+            });
+            if (!post) {
+              return NextResponse.json({ error: 'Post status changed; retry' }, { status: 503 });
+            }
+          }
 
           await db.integrationSync.update({
             where: { id: sync.id },
