@@ -27,13 +27,19 @@ export default function SlackIntegrationPage() {
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [connectionCode, setConnectionCode] = useState('');
   const [error, setError] = useState('');
+  const [webhookConfigured, setWebhookConfigured] = useState(false);
 
   useEffect(() => {
     fetch('/api/integrations/slack')
       .then((res) => res.json())
       .then((data) => {
         if (data.integration) {
-          setConfig(data.integration.config as SlackConfig);
+          setConfig({
+            webhookUrl: '',
+            channel: data.integration.config.channel ?? '',
+            notifyOnNewPost: data.integration.config.notifyOnNewPost ?? true,
+          });
+          setWebhookConfigured(data.integration.config.webhookConfigured === true);
           setIsConnected(data.integration.isActive);
           setWorkspaceId(data.integration.slackTeamId);
         }
@@ -53,6 +59,8 @@ export default function SlackIntegrationPage() {
       if (!res.ok) throw new Error('Save failed');
       const data = await res.json();
       setIsConnected(true);
+      setWebhookConfigured(data.integration.config.webhookConfigured === true);
+      setConfig((current) => ({ ...current, webhookUrl: '' }));
       setWorkspaceId(data.integration.slackTeamId);
       setConnectionCode(data.connectionCode || '');
     } catch {
@@ -68,6 +76,7 @@ export default function SlackIntegrationPage() {
       const res = await fetch('/api/integrations/slack', { method: 'DELETE' });
       if (!res.ok) throw new Error('Disconnect failed');
       setIsConnected(false);
+      setWebhookConfigured(false);
       setWorkspaceId(null);
       setConnectionCode('');
       setConfig({ webhookUrl: '', channel: '', notifyOnNewPost: true });
@@ -115,7 +124,11 @@ export default function SlackIntegrationPage() {
               value={config.webhookUrl}
               onChange={(e) => setConfig({ ...config, webhookUrl: e.target.value })}
             />
-            <p className="text-xs text-muted-foreground">Your Slack Incoming Webhook URL</p>
+            <p className="text-xs text-muted-foreground">
+              {webhookConfigured
+                ? 'Webhook configured. Re-enter the URL to save any changes.'
+                : 'Enter your Slack Incoming Webhook URL to save.'}
+            </p>
           </div>
 
           <div className="space-y-2">

@@ -1,6 +1,7 @@
 import { after, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { emitWebhook } from '@/lib/webhooks/emit';
 import { z } from 'zod';
 import { notifyStatusChange } from '@/lib/notifications/events';
 import { isOrganizationAdmin } from '@/lib/status-notification-policy';
@@ -54,6 +55,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ postId
       if (!updated.count) {
         return NextResponse.json({ error: 'Post status changed; retry' }, { status: 409 });
       }
+      emitWebhook(organizationId, 'post.updated', { ...post, statusId: status.id });
+      emitWebhook(organizationId, 'post.status_changed', {
+        postId: post.id, oldStatusId: post.statusId, newStatusId: status.id,
+      });
       const actorId = session.user.id;
       after(() => notifyStatusChange(post, post.status, status, organizationId, actorId).catch(console.error));
     }

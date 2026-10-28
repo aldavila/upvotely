@@ -120,6 +120,7 @@ function events(options: {
     $transaction: async (fn: (tx: unknown) => unknown): Promise<unknown> => fn(db),
   };
   const load = loader({
+    '@/lib/webhooks/emit': { emitWebhook: () => {} },
     'next/server': { ...responseStub, after: (task: () => Promise<unknown>) => { afterTasks.push(task); } },
     '@/lib/db': { db },
     '@/lib/auth': { auth: async () => ({ user: { id: 'actor' } }) },
@@ -279,6 +280,7 @@ function statusEvents(options: {
     } },
   };
   const load = loader({
+    '@/lib/webhooks/emit': { emitWebhook: () => {} },
     'next/server': { ...responseStub, after: (task: () => Promise<unknown>) => { afterTasks.push(task); } },
     '@/lib/auth': { auth: async () => options.authorized === false ? null : { user: { id: 'actor' } } },
     '@/lib/db': { db },

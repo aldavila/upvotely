@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { emitWebhook } from '@/lib/webhooks/emit';
 import { publicPostSelect } from '@/lib/public-payloads';
 import { authenticateApiKey } from '@/lib/api-auth';
 import { createPostSchema } from '@/lib/validators';
@@ -247,6 +248,10 @@ export async function POST(req: Request): Promise<NextResponse> {
       isAnonymous: validatedData.isAnonymous ?? !userId,
     }, board.organizationId, userId).catch(console.error);
     if (isApproved) {
+      emitWebhook(board.organizationId, 'post.created', {
+        id: result.id, title: result.title, boardId: validatedData.boardId,
+        statusId: defaultStatus.id, createdAt: result.createdAt,
+      });
       notifyPostCreated(board.organizationId, {
         title: sanitizedTitle, content: sanitizedContent, boardName: board.name,
         authorName: result.author?.name ?? null,

@@ -18,8 +18,8 @@ function webhookRequest(body: string, signature: string | null = createHmac('sha
     method: 'POST', body, headers: signature === null ? {} : { 'Linear-Signature': signature },
   });
 }
-function webhook(db: unknown, signingSecret: string | undefined = secret) {
-  return loadSource(webhookFile, { '@/lib/db': { db } }, {
+function webhook(db: unknown, signingSecret: string | undefined = secret, webhooks: unknown[][] = []) {
+  return loadSource(webhookFile, { '@/lib/db': { db }, '@/lib/webhooks/emit': { emitWebhook: (...args: unknown[]) => webhooks.push(JSON.parse(JSON.stringify(args))) } }, {
     process: { env: { LINEAR_WEBHOOK_SIGNING_SECRET: signingSecret } },
   }).POST as (req: Request) => Promise<Response>;
 }
@@ -73,9 +73,10 @@ function webhookDb(rows: Row[], postOrg?: string) {
     integrationSync: {
       findFirst: async ({ where }: any) => rows.find(row => matches(row, where)) ?? null,
       findMany: async ({ where }: any) => rows.filter(row => matches(row, where)),
-      update: async () => ({}),
+      update: async (_query: any) => ({}),
     },
     post: {
+      findFirst: async ({ where }: any) => posts.find(row => matches(row, where)) ?? null,
       update: async ({ where, data }: any) => { const post = posts.find(row => matches(row, where)); if (!post) throw new Error('Not found'); Object.assign(post, data); return post; },
       updateMany: async ({ where, data }: any) => { const found = posts.filter(row => matches(row, where)); found.forEach(row => Object.assign(row, data)); return { count: found.length }; },
     },
@@ -282,5 +283,74 @@ for (const webhookSecret of [undefined, '']) {
     const response = await routes.POST(configRequest({ apiKey: randomBytes(32).toString('hex'), teamId: 'team-a', webhookSecret }));
     assert.equal(response.status, 400);
     assert.equal(saved(), null);
+  });
+}
+
+
+for (const scenario of ['replay', 'already complete', 'race completes', 'race changes status', 'second race loses', 'post disappears']) {
+  test(`Linear completion handles ${scenario} without duplicate or dropped events`, async () => {
+    const syncRow = sync('correct', 'immutable-a', 'team-a');
+    const { db, posts } = webhookDb([syncRow]);
+    const post = posts[0];
+    const webhooks: unknown[][] = [];
+    const metadataUpdates: any[] = [];
+    const priorMetadata = { ...syncRow.metadata, preserved: 'existing value', completedAt: 'old timestamp' };
+    syncRow.metadata = priorMetadata;
+    const findPost = db.post.findFirst;
+    const updatePost = db.post.updateMany;
+    let reads = 0;
+    let writes = 0;
+    db.post.findFirst = async (query: any) => {
+      reads++;
+      if (scenario === 'post disappears' && reads === 2) return null;
+      const found = await findPost(query);
+      // Prisma returns a snapshot, not a reference to the mutable test row.
+      return found ? { ...found } : null;
+    };
+    db.post.updateMany = async (query: any) => {
+      writes++;
+      assert.equal(query.where.statusId, writes === 1 ? 'open' : 'in-progress');
+      assert.equal(query.where.board.organizationId, 'correct');
+      if (scenario === 'race completes') {
+        post.statusId = 'complete-correct';
+        return { count: 0 };
+      }
+      if (['race changes status', 'second race loses', 'post disappears'].includes(scenario) && writes === 1) {
+        post.statusId = 'in-progress';
+        return { count: 0 };
+      }
+      if (scenario === 'second race loses') return { count: 0 };
+      return updatePost(query);
+    };
+    db.integrationSync.update = async (query: any) => { metadataUpdates.push(query); return syncRow; };
+    if (scenario === 'already complete') post.statusId = 'complete-correct';
+    const route = webhook(db, secret, webhooks);
+    const deliver = () => route(webhookRequest(JSON.stringify(payload())));
+    const failed = scenario === 'second race loses' || scenario === 'post disappears';
+    const response = await deliver();
+    assert.equal(response.status, failed ? 503 : 200);
+    const expectedWrites = scenario === 'already complete' ? 0 : ['race changes status', 'second race loses'].includes(scenario) ? 2 : 1;
+    assert.equal(writes, expectedWrites);
+    assert.equal(reads, ['replay', 'already complete'].includes(scenario) ? 1 : 2);
+    assert.equal(post.statusId, failed ? 'in-progress' : 'complete-correct');
+    const changed = scenario === 'replay' || scenario === 'race changes status';
+    assert.deepEqual(webhooks, changed ? [['correct', 'post.status_changed', {
+      postId: post.id, oldStatusId: scenario === 'replay' ? 'open' : 'in-progress', newStatusId: 'complete-correct',
+    }]] : []);
+    assert.equal(metadataUpdates.length, failed ? 0 : 1);
+    if (!failed) {
+      const update = metadataUpdates[0];
+      assert.deepEqual(JSON.parse(JSON.stringify(update.where)), { id: syncRow.id });
+      assert.deepEqual(JSON.parse(JSON.stringify(update.data.metadata)), {
+        ...priorMetadata, lastLinearAction: 'completed', completedAt: update.data.metadata.completedAt,
+      });
+      assert.ok(Number.isFinite(Date.parse(update.data.metadata.completedAt)));
+    }
+    if (scenario === 'replay') {
+      assert.equal((await deliver()).status, 200);
+      assert.equal(writes, 1);
+      assert.equal(webhooks.length, 1);
+      assert.equal(metadataUpdates.length, 2);
+    }
   });
 }

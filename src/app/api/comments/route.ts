@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { emitWebhook } from '@/lib/webhooks/emit';
 import { publicCommentSelect } from '@/lib/public-payloads';
 import { createCommentSchema } from '@/lib/validators';
 import { z } from 'zod';
@@ -161,6 +162,9 @@ export async function POST(req: Request): Promise<NextResponse> {
       },
       select: authenticatedCommentSelect,
     });
+
+    // The mapper skips internal/private comments, including their metadata.
+    emitWebhook(post.board.organizationId, 'comment.created', comment);
 
     const mentionedUserIds = await notifyMentions(post, comment, post.board.organizationId)
       .catch(error => {

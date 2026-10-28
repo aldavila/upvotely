@@ -84,17 +84,19 @@ function request(path: string) {
 }
 function postRoute(path: string, requireApproval: boolean, notifyPostCreated: (...args: any[]) => Promise<any>) {
   const posts: any[] = [];
+  const webhooks: unknown[][] = [];
   const testBoard = { ...board, requireApproval };
   const db: any = {
     board: { findUnique: async () => testBoard },
     status: { findFirst: async () => ({ id: 'status' }) },
-    post: { create: async ({ data }: any) => { posts.push(data); return { isApproved: true, ...data, id: 'post', author: null }; } },
+    post: { create: async ({ data }: any) => { posts.push(data); return { isApproved: true, ...data, id: 'post', author: null, createdAt: new Date('2026-01-01T00:00:00.000Z') }; } },
     integration: { findMany: async () => [{ id: 'integration', organizationId: 'org-a', organization: { slug: 'example', boards: [testBoard], statuses: [{ id: 'status', isDefault: true }] } }] },
     integrationSync: { create: async () => ({}) },
   };
   db.$transaction = async (work: any) => work(db);
-  return { posts, route: loadSource(path, {
+  return { posts, webhooks, route: loadSource(path, {
     'next/server': { NextResponse, after: () => {} },
+    '@/lib/webhooks/emit': { emitWebhook: (...args: unknown[]) => { assert.equal(posts.length, 1); webhooks.push(JSON.parse(JSON.stringify(args))); } },
     '@/lib/db': { db }, '@/lib/auth': { auth: async () => null },
     '@/lib/api-auth': { authenticateApiKey: async () => null },
     '@/lib/ai/categorize': { categorizeAndUpdatePost: async () => {} },
@@ -109,7 +111,7 @@ for (const path of postPaths) {
     let finish!: () => void;
     const delivery = new Promise<void>(resolve => { finish = resolve; });
     let notified = false;
-    const { route, posts } = postRoute(path, false, async () => { notified = true; await delivery; });
+    const { route, posts, webhooks } = postRoute(path, false, async () => { notified = true; await delivery; });
     let response: Response | undefined;
     const pending = route.POST(request(path)).then((res: Response) => { response = res; });
     try {
@@ -117,15 +119,20 @@ for (const path of postPaths) {
       assert.equal(posts.length, 1);
       assert.equal(notified, true);
       assert.ok(response?.ok, 'Response must not wait for Slack delivery');
+      assert.deepEqual(webhooks, [['org-a', 'post.created', {
+        id: 'post', title: 'Feedback title', boardId: board.id, statusId: 'status',
+        createdAt: '2026-01-01T00:00:00.000Z',
+      }]]);
     } finally { finish(); await pending; }
   });
-  test(`${path} does not notify Slack about feedback awaiting approval`, async () => {
+  test(`${path} does not emit post.created or notify Slack when requireApproval is true`, async () => {
     let notifications = 0;
-    const { route, posts } = postRoute(path, true, async () => { notifications++; });
+    const { route, posts, webhooks } = postRoute(path, true, async () => { notifications++; });
     const response = await route.POST(request(path));
     assert.ok(response.ok);
     assert.equal(posts[0].isApproved, false);
     assert.equal(notifications, 0);
+    assert.deepEqual(webhooks, []);
     if (path === commandPath) {
       const data = await response.json();
       assert.equal(data.response_type, 'ephemeral');
@@ -155,7 +162,7 @@ test('notification escapes user-supplied Slack mentions and links', () => {
 });
 
 test('workspace clash returns a Slack-readable ephemeral error', async () => {
-  const route = loadSource(commandPath, { '@/lib/db': { db: { integration: { findMany: async () => { throw { code: 'P2002' }; } } } } }, { SLACK_SIGNING_SECRET: secret });
+  const route = loadSource(commandPath, { '@/lib/webhooks/emit': { emitWebhook: () => {} }, '@/lib/db': { db: { integration: { findMany: async () => { throw { code: 'P2002' }; } } } } }, { SLACK_SIGNING_SECRET: secret });
   const res = await route.POST(request(commandPath));
   assert.equal(res.status, 409);
   const data = await res.json();
@@ -168,7 +175,7 @@ for (const path of [commandPath, settingsPath]) {
     const logs: unknown[][] = [];
     const sensitive = randomBytes(32).toString('hex');
     const fail = async () => { throw new Error(sensitive); };
-    const route = loadSource(path, { '@/lib/db': { db: { integration: { findMany: fail } } }, '@/lib/auth': { auth: fail } }, { SLACK_SIGNING_SECRET: secret }, undefined, (...args) => logs.push(args));
+    const route = loadSource(path, { '@/lib/webhooks/emit': { emitWebhook: () => {} }, '@/lib/db': { db: { integration: { findMany: fail } } }, '@/lib/auth': { auth: fail } }, { SLACK_SIGNING_SECRET: secret }, undefined, (...args) => logs.push(args));
     const response = await route.POST(request(path));
     assert.ok(response);
     assert.equal(logs.length, 1);

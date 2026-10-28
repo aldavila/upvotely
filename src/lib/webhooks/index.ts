@@ -34,7 +34,8 @@ export async function triggerWebhook(
     },
   });
 
-  deliverWithRetry(webhookEvent.id, org.webhookUrl, org.webhookSecret, payload).catch(console.error);
+  // Let after() keep the bounded delivery chain alive until it settles.
+  await deliverWithRetry(webhookEvent.id, org.webhookUrl, org.webhookSecret, payload);
 }
 
 export async function deliverWithRetry(

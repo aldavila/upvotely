@@ -15,6 +15,7 @@ function load(file: string, db: unknown, options: {
   createIssue?: (...args: unknown[]) => unknown;
   authenticated?: boolean;
   errors?: unknown[][];
+  webhooks?: unknown[][];
 } = {}): any {
   const module = { exports: {} };
   const source = ts.transpileModule(readFileSync(resolve(file), 'utf8'), {
@@ -26,6 +27,7 @@ function load(file: string, db: unknown, options: {
     process: { env: { GITHUB_WEBHOOK_SECRET: options.secret } },
     fetch: options.fetch ?? (() => { throw new Error('Unexpected network call'); }),
     require(name: string) {
+      if (name === '@/lib/webhooks/emit') return { emitWebhook: (...args: unknown[]) => options.webhooks?.push(JSON.parse(JSON.stringify(args))) };
       if (name === '@/lib/db') return { db };
       if (name === 'next/server') return { NextResponse: Response };
       if (name === '@/lib/auth') return { auth: async () => options.authenticated === false ? null : ({ user: { id: 'user-a' } }) };
@@ -604,3 +606,72 @@ test('recovery verifies an issue in the original repository after config changes
     { title: 'Feedback', body: 'Details' }, { issueNumber: 8, confirmed: true });
   assert.equal(result.issueUrl, 'https://github.com/example/original-repo/issues/8');
 });
+
+
+for (const scenario of ['replay', 'already complete', 'race completes', 'race changes status', 'second race loses', 'post disappears']) {
+  test(`GitHub completion handles ${scenario} without duplicate or dropped events`, async () => {
+    const { db, posts, syncs } = fixtures();
+    const post = posts[1];
+    const syncRow = syncs[1];
+    const webhooks: unknown[][] = [];
+    const metadataUpdates: any[] = [];
+    const priorMetadata = { ...syncRow.metadata, preserved: 'existing value', closedAt: 'old timestamp' };
+    syncRow.metadata = priorMetadata;
+    const findPost = db.post.findFirst;
+    const updatePost = db.post.updateMany;
+    let reads = 0;
+    let writes = 0;
+    db.post.findFirst = async (query: any) => {
+      reads++;
+      if (scenario === 'post disappears' && reads === 2) return null;
+      const found = await findPost(query);
+      // Prisma returns a snapshot, not a reference to the mutable test row.
+      return found ? { ...found } : null;
+    };
+    db.post.updateMany = async (query: any) => {
+      writes++;
+      assert.equal(query.where.statusId, writes === 1 ? 'open' : 'in-progress');
+      assert.equal(query.where.board.organizationId, 'org-b');
+      if (scenario === 'race completes') {
+        post.statusId = 'complete-b';
+        return { count: 0 };
+      }
+      if (['race changes status', 'second race loses', 'post disappears'].includes(scenario) && writes === 1) {
+        post.statusId = 'in-progress';
+        return { count: 0 };
+      }
+      if (scenario === 'second race loses') return { count: 0 };
+      return updatePost(query);
+    };
+    db.integrationSync.update = async (query: any) => { metadataUpdates.push(query); return syncRow; };
+    if (scenario === 'already complete') post.statusId = 'complete-b';
+    const { POST } = load(webhook, db, { webhooks });
+    const deliver = () => POST(request(closedBody, signature(closedBody)));
+    const failed = scenario === 'second race loses' || scenario === 'post disappears';
+    const response = await deliver();
+    assert.equal(response.status, failed ? 503 : 200);
+    const expectedWrites = scenario === 'already complete' ? 0 : ['race changes status', 'second race loses'].includes(scenario) ? 2 : 1;
+    assert.equal(writes, expectedWrites);
+    assert.equal(reads, ['replay', 'already complete'].includes(scenario) ? 1 : 2);
+    assert.equal(post.statusId, failed ? 'in-progress' : 'complete-b');
+    const changed = scenario === 'replay' || scenario === 'race changes status';
+    assert.deepEqual(webhooks, changed ? [['org-b', 'post.status_changed', {
+      postId: post.id, oldStatusId: scenario === 'replay' ? 'open' : 'in-progress', newStatusId: 'complete-b',
+    }]] : []);
+    assert.equal(metadataUpdates.length, failed ? 0 : 1);
+    if (!failed) {
+      const update = metadataUpdates[0];
+      assert.deepEqual(JSON.parse(JSON.stringify(update.where)), { id: syncRow.id });
+      assert.deepEqual(JSON.parse(JSON.stringify(update.data.metadata)), {
+        ...priorMetadata, lastGitHubAction: 'closed', closedAt: update.data.metadata.closedAt,
+      });
+      assert.ok(Number.isFinite(Date.parse(update.data.metadata.closedAt)));
+    }
+    if (scenario === 'replay') {
+      assert.equal((await deliver()).status, 200);
+      assert.equal(writes, 1);
+      assert.equal(webhooks.length, 1);
+      assert.equal(metadataUpdates.length, 2);
+    }
+  });
+}
