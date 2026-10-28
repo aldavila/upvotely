@@ -38,7 +38,7 @@ export async function notifyNewComment(
 }
 
 export async function notifyStatusChange(
-  post: { id: string; title: string; authorId: string | null },
+  post: { id: string; title: string; authorId: string | null; boardId: string },
   oldStatus: { id: string; name: string },
   newStatus: { id: string; name: string },
   organizationId: string,
@@ -61,11 +61,13 @@ export async function notifyStatusChange(
   for (const userId of recipients) {
     await createNotification({
       userId, organizationId, type: 'status_change', title: `Status changed on ${post.title}`,
-      message: `${oldStatus.name} → ${newStatus.name}`, link: '/dashboard/boards',
+      message: `${oldStatus.name} → ${newStatus.name}`, link: `/dashboard/boards/${post.boardId}/posts/${post.id}`,
       metadata: { postId: post.id, oldStatusId: oldStatus.id, newStatusId: newStatus.id },
     }, {
-      skipEmail: !memberIds.has(userId),
-      statusEmail: { postId: post.id, postTitle: post.title, newStatus: newStatus.name },
+      // Public voters receive the signed per-post unsubscribe email through the same
+      // preference-driven delivery path, so member/voter overlap cannot duplicate sends.
+      statusEmail: memberIds.has(userId) ? undefined
+        : { postId: post.id, postTitle: post.title, newStatus: newStatus.name },
     });
   }
   return { notified: recipients.length };

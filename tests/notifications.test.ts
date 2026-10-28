@@ -102,6 +102,7 @@ function events(options: {
 } = {}) {
   const notifications: any[] = [];
   const emails: any[] = [];
+  const afterTasks: (() => Promise<unknown>)[] = [];
   const board = { id: 'cboard00000000000000000000', organizationId: 'org', slug: 'board', organization: { slug: 'organization' }, isPublic: true, allowAnonymous: true, requireApproval: false };
   const post = { id: 'cpost000000000000000000000', boardId: board.id, board, title: 'Example post', authorId: options.authorId === undefined ? 'recipient' : options.authorId, isApproved: true };
   const db = {
@@ -119,7 +120,7 @@ function events(options: {
     $transaction: async (fn: (tx: unknown) => unknown): Promise<unknown> => fn(db),
   };
   const load = loader({
-    'next/server': responseStub,
+    'next/server': { ...responseStub, after: (task: () => Promise<unknown>) => { afterTasks.push(task); } },
     '@/lib/db': { db },
     '@/lib/auth': { auth: async () => ({ user: { id: 'actor' } }) },
     '@/lib/api-auth': { authenticateApiKey: async () => null },
@@ -130,7 +131,8 @@ function events(options: {
     '@/lib/ai/similarity': { createMergeSuggestions: async () => {} },
   });
   return {
-    notifications, emails,
+    notifications, emails, afterTasks,
+    finishRequest: async () => { for (const task of afterTasks) await task(); },
     submit: async (route: string) => load(`src/app/api/${route}/route.ts`).POST(new Request('https://app.example.test/event', {
       method: 'POST', body: JSON.stringify({ boardId: board.id, postId: post.id, title: post.title, content: options.content ?? 'Example feedback content', isInternal: options.internal ?? false, isAnonymous: options.anonymous ?? false }),
     })),
@@ -141,6 +143,7 @@ for (const route of ['posts', 'widget/submit', 'comments']) {
     const fixture = events();
     const response = await fixture.submit(route);
     assert.ok(response.ok);
+    await fixture.finishRequest();
     assert.equal(fixture.notifications.length, route === 'widget/submit' ? 2 : 1);
     assert.ok(fixture.notifications.every(n => n.organizationId === 'org' && n.type === (route === 'comments' ? 'new_comment' : 'new_post')));
   });
@@ -179,6 +182,7 @@ for (const route of ['widget/submit', 'posts']) {
   test(`${route}: anonymous submissions create in-app notifications without instant email`, async () => {
     const fixture = events({ anonymous: true });
     assert.ok((await fixture.submit(route)).ok);
+    await fixture.finishRequest();
     assert.ok(fixture.notifications.length > 0);
     assert.equal(fixture.emails.length, 0);
   });
@@ -240,7 +244,7 @@ function statusEvents(options: {
   let writes = 0;
   const db = {
     post: {
-      findUnique: async () => ({ id: postId, title: 'Feedback', authorId: 'author', statusId: oldStatus.id, status: oldStatus, board: { organizationId: 'org' } }),
+      findUnique: async () => ({ id: postId, title: 'Feedback', boardId: 'board', authorId: 'author', statusId: oldStatus.id, status: oldStatus, board: { organizationId: 'org' } }),
       updateMany: async ({ where, data }: any) => {
         assert.equal(where.statusId, oldStatus.id);
         assert.equal(data.statusId, newStatus.id);
@@ -311,7 +315,7 @@ test('unchanged status neither writes nor notifies', async () => {
   assert.equal(fixture.writes(), 0);
   assert.equal(fixture.notifications.length, 0);
   await fixture.load('src/lib/notifications/events.ts').notifyStatusChange(
-    { id: 'post', title: 'Feedback', authorId: 'author' }, fixture.oldStatus, fixture.oldStatus, 'org', 'actor',
+    { id: 'post', title: 'Feedback', boardId: 'board', authorId: 'author' }, fixture.oldStatus, fixture.oldStatus, 'org', 'actor',
   );
   assert.equal(fixture.notifications.length, 0);
 });
@@ -341,11 +345,14 @@ test('status delivery is registered with the request lifecycle and completes on 
   assert.deepEqual(fixture.emails.map(n => n.userId), ['author', 'voter']);
 });
 for (const recipientMembers of [[], ['author'], ['voter']]) {
-  test(`status recipients outside organization get in-app only (members=${recipientMembers})`, async () => {
+  test(`status recipients outside organization get signed status email (members=${recipientMembers})`, async () => {
     const fixture = statusEvents({ recipientMembers });
     assert.equal((await fixture.patch()).status, 200);
     assert.deepEqual(fixture.notifications.map(n => n.userId), ['author', 'voter']);
-    assert.deepEqual(fixture.emails.map(n => n.userId), recipientMembers);
+    assert.deepEqual(fixture.emails.map(n => n.userId), ['author', 'voter']);
+    for (const email of fixture.emails) {
+      assert.equal(!!email.statusEmail, !recipientMembers.includes(email.userId));
+    }
   });
 }
 test('status PATCH rejects malformed JSON before writing or scheduling notifications', async () => {
@@ -377,4 +384,20 @@ test('concurrent requests to both status endpoints deliver one shared event', as
   assert.deepEqual(responses.map(response => response.status).sort(), [200, 409]);
   assert.deepEqual(fixture.notifications.map(notification => notification.userId).sort(), ['author', 'voter']);
   assert.equal(fixture.emails.length, 2);
+});
+
+test('a member who authors and votes receives exactly one normal engine email', async () => {
+  const fixture = statusEvents();
+  assert.equal((await fixture.patch()).status, 200);
+  assert.equal(fixture.emails.filter(email => email.userId === 'author').length, 1);
+  assert.equal(fixture.emails.find(email => email.userId === 'author').statusEmail, undefined);
+  assert.ok(fixture.notifications.every(n => n.link === '/dashboard/boards/board/posts/cpost000000000000000000000'));
+});
+
+test('widget notifications run after the response closes and contain delivery failures', async () => {
+  const fixture = events({ failMentions: true });
+  assert.equal((await fixture.submit('widget/submit')).status, 200);
+  assert.equal(fixture.afterTasks.length, 1);
+  assert.equal(fixture.notifications.length, 0);
+  await fixture.finishRequest();
 });

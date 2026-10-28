@@ -9,6 +9,7 @@ const statusId = 'c' + 'a'.repeat(24);
 const oldStatusId = 'c' + 'b'.repeat(24);
 
 function setup(options: { memberOrg?: string; role?: string; statusOrg?: string; unchanged?: boolean; notify?: () => Promise<unknown>; anonymous?: boolean; conflict?: boolean } = {}) {
+  const afterTasks: (() => Promise<unknown>)[] = [];
   const state = { updates: 0, notifications: [] as unknown[][] };
   const post = { id: 'post-a', statusId: options.unchanged ? statusId : oldStatusId, status: { name: 'Open' }, board: { organizationId: 'org-a' } };
   const db = {
@@ -23,14 +24,14 @@ function setup(options: { memberOrg?: string; role?: string; statusOrg?: string;
     status: { findUnique: async () => ({ id: statusId, name: 'Done', organizationId: options.statusOrg ?? 'org-a' }) },
   };
   const route = loadSource<Route>('src/app/api/posts/[postId]/status/route.ts', {
-    'next/server': { NextResponse }, zod: { z }, '@/lib/db': { db },
+    'next/server': { NextResponse, after: (task: () => Promise<unknown>) => { afterTasks.push(task); } }, zod: { z }, '@/lib/db': { db },
     '@/lib/auth': { auth: async () => options.anonymous ? null : { user: { id: 'admin-a' } } },
     '@/lib/notifications/events': { notifyStatusChange: async (...args: unknown[]) => {
       state.notifications.push(args);
       await options.notify?.();
     } },
   });
-  return { state, run: () => route.PATCH(new Request('https://app.example.test/api/posts/post-a/status', {
+  return { state, afterTasks, finishRequest: async () => { for (const task of afterTasks) await task(); }, run: () => route.PATCH(new Request('https://app.example.test/api/posts/post-a/status', {
     method: 'PATCH', body: JSON.stringify({ statusId }),
   }), { params: Promise.resolve({ postId: 'post-a' }) }) };
 }
@@ -55,20 +56,25 @@ test('an unchanged status causes no write or notifications', async () => {
   assert.equal(state.updates, 0);
 });
 
-test('the route waits for notification delivery before returning', async () => {
+test('the route schedules notification delivery after returning', async () => {
   const gate = deferred();
-  const { run, state } = setup({ notify: () => gate.promise });
-  let returned = false;
-  const pending = run().then((response) => { returned = true; return response; });
+  const { run, state, afterTasks, finishRequest } = setup({ notify: () => gate.promise });
+  assert.equal((await run()).status, 200);
+  assert.equal(afterTasks.length, 1);
+  assert.equal(state.notifications.length, 0);
+  const pending = finishRequest();
   await tick();
-  try { assert.equal(returned, false); } finally { gate.resolve(); await pending; }
+  gate.resolve();
+  await pending;
   assert.equal(state.updates, 1);
   assert.equal(state.notifications[0][3], 'org-a');
+  assert.equal(state.notifications[0][4], 'admin-a');
 });
 
 test('a delivery failure does not turn a saved status into a failed request', async () => {
-  const { run, state } = setup({ notify: async () => { throw new Error('Fake delivery failure'); } });
+  const { run, state, finishRequest } = setup({ notify: async () => { throw new Error('Fake delivery failure'); } });
   assert.equal((await run()).status, 200);
+  await finishRequest();
   assert.equal(state.updates, 1);
 });
 

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { z } from 'zod';
@@ -64,8 +64,8 @@ export async function PATCH(
     if (!updated.count) {
       return NextResponse.json({ error: 'Post status changed; retry' }, { status: 409 });
     }
-    await notifyStatusChange(post, post.status, newStatus, organizationId, session.user.id)
-      .catch(console.error);
+    const actorId = session.user.id;
+    after(() => notifyStatusChange(post, post.status, newStatus, organizationId, actorId).catch(console.error));
     const updatedPost = await db.post.findUnique({
       where: { id: postId }, include: { status: true },
     });

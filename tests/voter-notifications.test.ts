@@ -4,8 +4,8 @@ import { test } from 'node:test';
 import { deferred, tick } from './helpers';
 import { loadSource } from './load-source';
 
-type Preference = { userId: string; organizationId: string; emailStatusChange: boolean; inAppStatusChange: boolean };
-type Notifier = { notifyVotersOnStatusChange: (postId: string, orgId: string, oldStatus: string, newStatus: string) => Promise<unknown> };
+type Preference = { userId: string; organizationId: string; emailStatusChange: boolean; inAppStatusChange: boolean; emailDigest?: string };
+type Notifier = { notifyStatusChange: (post: { id: string; title: string; boardId: string; authorId: null }, oldStatus: { id: string; name: string }, newStatus: { id: string; name: string }, orgId: string) => Promise<unknown> };
 type Email = { to: string; html: string; subject: string };
 
 function setup(options: { preferences?: Preference[]; title?: string; status?: string; delivery?: (email: Email) => Promise<void>; inAppDelivery?: () => Promise<void>; unsubscribed?: string[]; provider?: string } = {}) {
@@ -20,14 +20,13 @@ function setup(options: { preferences?: Preference[]; title?: string; status?: s
   };
   const db = {
     vote: { findMany: async () => [{ userId: 'user-a' }, { userId: 'user-b' }] },
-    post: { findUnique: async () => ({ id: 'post-a', title: options.title ?? 'A feature', boardId: 'board-a', authorId: null }) },
     postSubscription: { findMany: async () => (options.unsubscribed ?? []).map(userId => ({ userId })) },
     notification: { create: async ({ data }: { data: { userId: string } }) => { await options.inAppDelivery?.(); notifications.push(data); } },
     user: { findUnique: async ({ where }: { where: { id: string } }) => ({ id: where.id, email: `${where.id}@example.test` }) },
-    organizationMember: { findMany: async () => [{ userId: 'user-a' }, { userId: 'user-b' }] },
+    organizationMember: { findMany: async () => [] },
     notificationPreference: { findFirst: findPreference, findUnique: findPreference },
   };
-  const notifier: Notifier = loadSource('src/lib/notifications/voter-status.ts', { '@/lib/db': { db } }, {
+  const notifier: Notifier = loadSource('src/lib/notifications/events.ts', { '@/lib/db': { db } }, {
     EMAIL_PROVIDER: options.provider ?? 'resend', RESEND_API_KEY: randomBytes(16).toString('hex'),
     SENDGRID_API_KEY: randomBytes(16).toString('hex'), NEXTAUTH_URL: 'https://app.example.test',
     UNSUBSCRIBE_TOKEN_SECRET: secret,
@@ -42,7 +41,10 @@ function setup(options: { preferences?: Preference[]; title?: string; status?: s
     return new Response(null, { status: 202 });
   });
   return { emails, notifications, requests, secret, run: async () => {
-    const result = await notifier.notifyVotersOnStatusChange('post-a', 'org-a', 'Open', options.status ?? 'Done');
+    const result = await notifier.notifyStatusChange(
+      { id: 'post-a', title: options.title ?? 'A feature', boardId: 'board-a', authorId: null },
+      { id: 'open-id', name: 'Open' }, { id: 'done-id', name: options.status ?? 'Done' }, 'org-a',
+    );
     return result;
   } };
 }
@@ -125,3 +127,12 @@ for (const provider of ['resend', 'sendgrid']) {
     assert.ok(requests.every(r => r.redirect === 'manual'));
   });
 }
+
+test('public voter email still respects the none frequency preference', async () => {
+  const { run, emails, notifications } = setup({ preferences: [
+    { userId: 'user-a', organizationId: 'org-a', emailStatusChange: true, inAppStatusChange: true, emailDigest: 'none' },
+  ] });
+  await run();
+  assert.deepEqual(emails.map(email => email.to), ['user-b@example.test']);
+  assert.equal(notifications.length, 2);
+});

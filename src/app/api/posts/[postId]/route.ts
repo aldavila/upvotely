@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { z } from 'zod';
 import { notifyStatusChange } from '@/lib/notifications/events';
+import { isOrganizationAdmin } from '@/lib/status-notification-policy';
 
 const updateStatusSchema = z.object({ statusId: z.string().cuid() }).strict();
 
@@ -35,7 +36,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ postId
     const membership = await db.organizationMember.findFirst({
       where: { userId: session.user.id, organizationId, role: { in: ['owner', 'admin'] } },
     });
-    if (!membership) {
+    if (!isOrganizationAdmin(membership, organizationId)) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
     const status = await db.status.findFirst({

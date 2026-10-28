@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createHmac, randomBytes } from 'node:crypto';
@@ -93,6 +94,7 @@ function postRoute(path: string, requireApproval: boolean, notifyPostCreated: (.
   };
   db.$transaction = async (work: any) => work(db);
   return { posts, route: loadSource(path, {
+    'next/server': { NextResponse, after: () => {} },
     '@/lib/db': { db }, '@/lib/auth': { auth: async () => null },
     '@/lib/api-auth': { authenticateApiKey: async () => null },
     '@/lib/ai/categorize': { categorizeAndUpdatePost: async () => {} },
