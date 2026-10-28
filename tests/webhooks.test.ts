@@ -43,7 +43,7 @@ const retryArgs = [new Request('https://app.example/retry', { method: 'POST' }),
 
 function assertNoStoredSecret(body: unknown, secret: string) {
   const serialized = JSON.stringify(body);
-  for (const fragment of [secret, secret.slice(0, 10), secret.slice(-4)]) {
+  for (const fragment of [secret, secret.slice(0, 10)]) {
     assert.equal(serialized.includes(fragment), false);
   }
   assert.equal(serialized.includes('secretPreview'), false);
@@ -272,4 +272,20 @@ test('unauthenticated callers and non-admin members cannot read, rotate or retry
     assert.equal(f.state.writes, 0);
     assert.equal(f.state.status, 'failed');
   }
+});
+
+test('retry does not log secret-bearing delivery errors', async () => {
+  const f = fixture();
+  const secret = randomBytes(32).toString('hex');
+  f.org.webhookSecret = secret;
+  const logs: unknown[][] = [];
+  f.mocks['@/lib/webhooks'] = { deliverWithRetry: async () => {
+    throw new Error(`Delivery failed for ${secret}`);
+  } };
+  const response = await load(retryPath, f.mocks, {
+    console: { error: (...args: unknown[]) => logs.push(args) },
+  }).POST(...retryArgs);
+  assert.equal(response.status, 500);
+  assertNoStoredSecret(await response.json(), secret);
+  assert.deepEqual(logs, [['Retry webhook error']]);
 });

@@ -69,8 +69,8 @@ export async function POST(req: Request): Promise<NextResponse> {
     }
 
     return NextResponse.json({ received: true });
-  } catch (error) {
-    console.error('GitHub webhook error:', error);
+  } catch {
+    console.error('GitHub webhook error');
     return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 });
   }
 }

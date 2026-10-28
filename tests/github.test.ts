@@ -65,6 +65,8 @@ function matches(row: any, where: any): boolean {
 
 function fixtures() {
   const integrations = ['a', 'b'].map((key) => ({
+    createdAt: new Date('2026-01-01T00:00:00Z'), updatedAt: new Date('2026-01-02T00:00:00Z'),
+    slackConnectionCodeHash: randomBytes(32).toString('hex'),
     id: `integration-${key}`, organizationId: `org-${key}`, type: 'github', isActive: true,
     config: { owner: 'example', repo: `repo-${key}`, repository: `example/repo-${key}`, accessToken: '', webhookSecret: key === 'b' ? secret : randomBytes(32).toString('hex') },
     organization: { statuses: [{ id: `complete-${key}`, type: 'complete' }] },
@@ -369,20 +371,29 @@ test('saving a connection generates and rotates a copy-once secret without retur
     assert.match(secret, /^[a-f0-9]{64}$/);
     assert.notEqual(secret, suppliedSecret);
     assert.notEqual(secret, previous);
+    assert.deepEqual(Object.keys(integration).sort(), ['config', 'createdAt', 'id', 'isActive', 'organizationId', 'type', 'updatedAt']);
+    assert.equal(integration.createdAt, f.integrations[0].createdAt.toISOString());
+    assert.equal(integration.updatedAt, f.integrations[0].updatedAt.toISOString());
+    for (const fragment of [previous, previous.slice(0, 10), token, token.slice(0, 10)]) {
+      assert.equal(JSON.stringify(integration).includes(fragment), false);
+    }
     assert.equal(integration.config.webhookSecret, undefined);
     assert.equal(integration.config.hasSecret, true);
     assert.equal(integration.config.repository, 'example/repo-a');
     assert.equal(integration.config.accessToken, undefined);
-    previous = secret;
     const read = await (await GET()).json();
+    assert.deepEqual(Object.keys(read.integration).sort(), Object.keys(integration).sort());
+    assert.equal(read.integration.createdAt, integration.createdAt);
+    assert.equal(read.integration.updatedAt, integration.updatedAt);
     assert.equal(read.integration.config.webhookSecret, undefined);
     assert.equal(read.integration.config.hasSecret, true);
     assert.equal(read.secret, undefined);
-    for (const fragment of [secret, secret.slice(0, 10), secret.slice(-4)]) {
+    for (const fragment of [secret, secret.slice(0, 10), previous, previous.slice(0, 10)]) {
       assert.equal(JSON.stringify(read).includes(fragment), false);
     }
     assert.equal(read.integration.config.accessToken, undefined);
     assert.equal(read.integration.organizationId, 'org-a');
+    previous = secret;
   }
 });
 
